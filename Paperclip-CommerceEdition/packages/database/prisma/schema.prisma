@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CEO
+  COO
+  CTO
+  CMO
+  MARKETPLACE_MANAGER
+  PRODUCT_RESEARCH_MANAGER
+  CONTENT_MANAGER
+  SEO_MANAGER
+  ADS_MANAGER
+  REPORTING_MANAGER
+  USER
+}
+
+enum IssueStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  BLOCKED
+}
+
+enum AIProviderType {
+  GEMINI
+  OPENAI
+  CLAUDE
+  DEEPSEEK
+  GROK
+  OPENROUTER
+  OLLAMA
+  LM_STUDIO
+  OPENCLAW
+  CUSTOM
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  industry  String?
+  goals     Goal[]
+  users     User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      Role     @default(USER)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Goal {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("ACTIVE")
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id])
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("PLANNING")
+  goalId      String
+  goal        Goal     @relation(fields: [goalId], references: [id])
+  issues      Issue[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Issue {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+  status       IssueStatus  @default(TODO)
+  priority     String       @default("MEDIUM")
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id])
+  agentId      String?
+  agent        Agent?       @relation(fields: [agentId], references: [id])
+  workProducts WorkProduct[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Agent {
+  id           String     @id @default(cuid())
+  name         String
+  role         Role
+  systemPrompt String     @db.Text
+  providerId   String
+  provider     AIProvider @relation(fields: [providerId], references: [id])
+  issues       Issue[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model AIProvider {
+  id           String         @id @default(cuid())
+  name         String
+  type         AIProviderType
+  model        String
+  endpoint     String?
+  apiKey       String?        @db.Text
+  enabled      Boolean        @default(true)
+  agents       Agent[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model WorkProduct {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  type      String   // e.g., "DESCRIPTION", "IMAGE_PROMPT", "SHEET_DATA"
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id])
+  status    String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?  @db.Text
+  price         Float
+  sku           String?  @unique
+  imageUrl      String?
+  sourceUrl     String?
+  category      String?
+  tags          String[]
+  companyId     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model MarketplaceChannel {
+  id        String   @id @default(cuid())
+  name      String   // Shopee, Tokopedia, etc.
+  apiKey    String?
+  shopId    String?
+  status    String   @default("DISCONNECTED")
+  companyId String
+  createdAt DateTime @default(now())
+}
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  category  String   // DATABASE, STORAGE, RUNTIME
+  updatedAt DateTime @updatedAt
+}
