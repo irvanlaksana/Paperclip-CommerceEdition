@@ -1,10 +1,16 @@
+// Prisma schema - Paperclip Commerce Edition
+//
+// NOTE (Prisma 7): connection URLs no longer live in this file. The datasource
+// URL is declared in ../prisma.config.ts and, at runtime, passed to
+// PrismaClient through a driver adapter (see ../src/client.ts).
+
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -40,16 +46,25 @@ enum AIProviderType {
   LM_STUDIO
   OPENCLAW
   CUSTOM
+  MOCK
+}
+
+enum WorkProductStatus {
+  DRAFT
+  APPROVED
+  REJECTED
 }
 
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  industry  String?
-  goals     Goal[]
-  users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String       @id @default(cuid())
+  name        String
+  industry    String?
+  goals       Goal[]
+  users       User[]
+  products    Product[]
+  contentRuns ContentRun[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model User {
@@ -88,18 +103,18 @@ model Project {
 }
 
 model Issue {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   title        String
   description  String?
-  status       IssueStatus  @default(TODO)
-  priority     String       @default("MEDIUM")
+  status       IssueStatus   @default(TODO)
+  priority     String        @default("MEDIUM")
   projectId    String
-  project      Project      @relation(fields: [projectId], references: [id])
+  project      Project       @relation(fields: [projectId], references: [id])
   agentId      String?
-  agent        Agent?       @relation(fields: [agentId], references: [id])
+  agent        Agent?        @relation(fields: [agentId], references: [id])
   workProducts WorkProduct[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Agent {
@@ -107,54 +122,111 @@ model Agent {
   name         String
   role         Role
   systemPrompt String     @db.Text
-  providerId   String
-  provider     AIProvider @relation(fields: [providerId], references: [id])
+  providerId   String?
+  provider     AIProvider? @relation(fields: [providerId], references: [id])
   issues       Issue[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
 
+/// Runtime AI provider records. These OVERRIDE the values seeded from .env,
+/// which is what makes swapping the AI vendor a Settings-UI operation.
 model AIProvider {
-  id           String         @id @default(cuid())
-  name         String
-  type         AIProviderType
-  model        String
-  endpoint     String?
-  apiKey       String?        @db.Text
-  enabled      Boolean        @default(true)
-  agents       Agent[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  name              String
+  type              AIProviderType
+  model             String
+  endpoint          String?
+  /// Stored encrypted at rest in production; never returned to the browser.
+  apiKey            String?        @db.Text
+  enabled           Boolean        @default(true)
+  /// Lower value = tried first when the fail-over chain is built.
+  priority          Int            @default(100)
+  isDefault         Boolean        @default(false)
+  temperature       Float?
+  maxTokens         Int?
+  headers           Json?
+  /// STORE | ENV | CATALOG
+  source            String         @default("STORE")
+  lastTestAt        DateTime?
+  lastTestStatus    String?
+  lastTestMessage   String?        @db.Text
+  lastTestLatencyMs Int?
+  agents            Agent[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([type])
+}
+
+/// One execution of the content production pipeline.
+model ContentRun {
+  id           String        @id @default(cuid())
+  productName  String
+  /// QUEUED | RUNNING | COMPLETED | PARTIAL | FAILED
+  status       String        @default("QUEUED")
+  platforms    String[]
+  locale       String        @default("id-ID")
+  tone         String        @default("casual")
+  providerType String?
+  input        Json
+  stages       Json
+  error        String?       @db.Text
+  companyId    String?
+  company      Company?      @relation(fields: [companyId], references: [id])
+  workProducts WorkProduct[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }
 
 model WorkProduct {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
-  type      String   // e.g., "DESCRIPTION", "IMAGE_PROMPT", "SHEET_DATA"
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id])
-  status    String   @default("DRAFT") // DRAFT, APPROVED, REJECTED
-  createdAt DateTime @default(now())
+  id           String            @id @default(cuid())
+  title        String
+  content      String            @db.Text
+  /// RESEARCH | CAPTION | SEO | IMAGE_PROMPT | SCHEDULE | DESCRIPTION | SHEET_DATA
+  type         String
+  stage        String?
+  platform     String?
+  payload      Json?
+  status       WorkProductStatus @default(DRAFT)
+  providerType String?
+  model        String?
+  issueId      String?
+  issue        Issue?            @relation(fields: [issueId], references: [id])
+  runId        String?
+  run          ContentRun?       @relation(fields: [runId], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([runId])
+  @@index([status])
 }
 
 model Product {
-  id            String   @id @default(cuid())
-  name          String
-  description   String?  @db.Text
-  price         Float
-  sku           String?  @unique
-  imageUrl      String?
-  sourceUrl     String?
-  category      String?
-  tags          String[]
-  companyId     String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  price       Float
+  currency    String   @default("IDR")
+  sku         String?  @unique
+  imageUrl    String?
+  sourceUrl   String?
+  category    String?
+  tags        String[]
+  attributes  Json?
+  /// Optional so products can be created before a company record exists.
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model MarketplaceChannel {
   id        String   @id @default(cuid())
-  name      String   // Shopee, Tokopedia, etc.
+  name      String
   apiKey    String?
   shopId    String?
   status    String   @default("DISCONNECTED")
@@ -165,7 +237,7 @@ model MarketplaceChannel {
 model SystemConfig {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String
-  category  String   // DATABASE, STORAGE, RUNTIME
+  value     String   @db.Text
+  category  String
   updatedAt DateTime @updatedAt
 }

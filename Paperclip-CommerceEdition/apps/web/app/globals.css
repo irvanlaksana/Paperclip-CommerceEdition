@@ -1,0 +1,95 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-50 antialiased;
+  }
+
+  /* Thin scrollbars that match the dark surface palette. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-700) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-slate-700);
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/**
+ * Component classes.
+ *
+ * Tailwind v4 only allows `@apply` with real utilities, so the button base and
+ * its colour variants are separate classes: combine them in markup, e.g.
+ * `class="btn btn-primary"` or `class="btn-sm btn-ghost"`.
+ */
+@layer components {
+  .card {
+    @apply bg-slate-900 border border-slate-800 rounded-xl p-6;
+  }
+
+  .label {
+    @apply text-xs font-medium text-slate-400 uppercase tracking-wide;
+  }
+
+  .input {
+    @apply w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-500;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+  }
+
+  .btn-sm {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-500;
+  }
+
+  .btn-ghost {
+    @apply bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700;
+  }
+
+  .btn-danger {
+    @apply bg-red-900/60 border border-red-800 text-red-100 hover:bg-red-900;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}

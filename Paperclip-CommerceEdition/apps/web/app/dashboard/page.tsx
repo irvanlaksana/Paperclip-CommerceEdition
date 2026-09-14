@@ -1,83 +1,179 @@
-// apps/web/app/dashboard/page.tsx
-import React from 'react';
+'use client';
 
+import { useCallback, useEffect, useState } from 'react';
+import type { ContentRunDTO, Product } from '@paperclip/shared';
+import { api, type AiStatus } from '../../lib/api';
+
+const WORKFLOW = [
+  'Company',
+  'Goal',
+  'Project',
+  'Issue',
+  'Agent Assignment',
+  'Approval',
+  'Execution',
+  'Work Product',
+  'Review',
+  'Close',
+];
+
+/** Overview: live system state on top, documented workflow hierarchy below. */
 export default function DashboardPage() {
+  const [status, setStatus] = useState<AiStatus | null>(null);
+  const [runs, setRuns] = useState<ContentRunDTO[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [aiStatus, runList, productList] = await Promise.all([
+        api.ai.status(),
+        api.content.listRuns(6),
+        api.content.products(),
+      ]);
+      setStatus(aiStatus);
+      setRuns(runList);
+      setProducts(productList);
+    } catch (err: any) {
+      setError(err?.message ?? 'API belum siap.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(load, 15_000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  const approved = runs.flatMap((run) => run.workProducts).filter((wp) => wp.status === 'APPROVED').length;
+  const drafts = runs.flatMap((run) => run.workProducts).filter((wp) => wp.status === 'DRAFT').length;
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Company Workflow</h1>
-          <p className="text-slate-400">Managing Goal $\rightarrow$ Project $\rightarrow$ Issue</p>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-slate-400 text-sm mt-1">Ringkasan sistem dan produksi konten.</p>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-md font-medium transition-colors">
-          + New Goal
-        </button>
+        <a href="/content" className="btn btn-primary">
+          ✨ Buat konten
+        </a>
       </header>
 
-      {/* Goals View */}
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
-            <h2 className="font-bold">Goal: Dominate Wireless Audio Market Q3 2026</h2>
-            <span className="px-2 py-1 bg-green-900 text-green-300 rounded text-xs">ACTIVE</span>
-          </div>
-          
-          <div className="p-6 space-y-6">
-            {/* Projects under Goal */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Projects</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Marketplace Expansion</span>
-                    <span className="text-xs text-blue-400">In Progress</span>
-                  </div>
-                  <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full w-[65%]"></div>
-                  </div>
-                  <p className="text-xs text-slate-400">4/6 Issues completed</p>
-                </div>
-                <div className="p-4 bg-slate-800 border border-slate-700 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span className="font-medium">Content Viral Campaign</span>
-                    <span className="text-xs text-slate-400">Planning</span>
-                  </div>
-                  <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full w-[20%]"></div>
-                  </div>
-                  <p className="text-xs text-slate-400">1/5 Issues completed</p>
-                </div>
-              </div>
-            </div>
+      {error && (
+        <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">{error}</div>
+      )}
 
-            {/* Issues under current active Project */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Active Issues (Marketplace Expansion)</h3>
-              <div className="space-y-2">
-                {[
-                  { title: 'Scrape competitors price for Earbuds', agent: 'Product Research', status: 'DONE' },
-                  { title: 'Create SEO optimized description', agent: 'SEO Manager', status: 'IN_PROGRESS' },
-                  { title: 'Push to Shopee and Tokopedia', agent: 'Marketplace Manager', status: 'TODO' },
-                ].map((issue, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-800 border border-slate-700 rounded-md">
-                    <div className="flex items-center gap-3">
-                      <input type="checkbox" checked={issue.status === 'DONE'} className="rounded border-slate-600 bg-slate-700" readOnly />
-                      <span className={`text-sm ${issue.status === 'DONE' ? 'line-through text-slate-500' : ''}`}>{issue.title}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs bg-slate-700 px-2 py-1 rounded text-slate-300">{issue.agent}</span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        issue.status === 'DONE' ? 'bg-green-900 text-green-300' : 
-                        issue.status === 'IN_PROGRESS' ? 'bg-blue-900 text-blue-300' : 'bg-slate-700 text-slate-300'
-                      }`}>{issue.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="Provider AI"
+          value={status?.default.type ?? '—'}
+          hint={status ? `${status.default.model} · ${status.default.source}` : 'memuat…'}
+          tone={status?.default.type === 'MOCK' ? 'warn' : 'ok'}
+        />
+        <Stat
+          label="Penyimpanan"
+          value={status?.storage.driver ?? '—'}
+          hint={status?.storage.location ?? ''}
+        />
+        <Stat label="Produk katalog" value={String(products.length)} hint="siap dipakai Content Studio" />
+        <Stat
+          label="Work product"
+          value={`${approved} disetujui`}
+          hint={`${drafts} menunggu review dari ${runs.length} run terakhir`}
+        />
+      </section>
+
+      <section className="card space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h2 className="font-semibold">Run konten terakhir</h2>
+          <a href="/content" className="text-xs text-blue-400 hover:underline">
+            Buka Content Studio →
+          </a>
         </div>
+        {runs.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Belum ada run. Jalankan pipeline pertama dari Content Studio untuk melihat hasilnya di sini.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-800">
+            {runs.map((run) => (
+              <li key={run.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{run.productName}</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    {new Date(run.createdAt).toLocaleString('id-ID')} ·{' '}
+                    {run.platforms.length} platform · <span className="font-mono">{run.providerType}</span> ·{' '}
+                    {run.totalUsage?.totalTokens ?? 0} token
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-500">
+                    {run.stages.filter((stage) => stage.status === 'DONE').length}/{run.stages.length} tahap
+                  </span>
+                  <span
+                    className={`pill ${
+                      run.status === 'COMPLETED'
+                        ? 'bg-emerald-900/60 text-emerald-300'
+                        : run.status === 'PARTIAL'
+                          ? 'bg-amber-900/60 text-amber-300'
+                          : run.status === 'FAILED'
+                            ? 'bg-red-900/60 text-red-300'
+                            : 'bg-blue-900/60 text-blue-300'
+                    }`}
+                  >
+                    {run.status}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="card space-y-4">
+        <div className="border-b border-slate-800 pb-3">
+          <h2 className="font-semibold">Alur kerja hierarkis</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Model eksekusi yang didokumentasikan di README. Tahap Content Studio sudah berjalan di atasnya
+            (Issue → Agent → Work Product → Review).
+          </p>
+        </div>
+        <ol className="flex flex-wrap items-center gap-2 text-xs">
+          {WORKFLOW.map((step, index) => (
+            <li key={step} className="flex items-center gap-2">
+              <span className="px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700">{step}</span>
+              {index < WORKFLOW.length - 1 && <span className="text-slate-600">→</span>}
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'ok' | 'warn';
+}) {
+  return (
+    <div className="card !p-4 space-y-1">
+      <div className="label">{label}</div>
+      <div
+        className={`text-lg font-semibold font-mono truncate ${
+          tone === 'warn' ? 'text-amber-300' : tone === 'ok' ? 'text-emerald-300' : 'text-slate-100'
+        }`}
+      >
+        {value}
       </div>
+      {hint && <div className="text-[11px] text-slate-500 truncate">{hint}</div>}
     </div>
   );
 }
