@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "cd ../.. && corepack pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && corepack pnpm --filter @paperclip/shared build && corepack pnpm --filter @paperclip/web build"
+  "installCommand": "cd ../.. && (npm install -g corepack@latest && corepack enable) >/dev/null 2>&1 || true; COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 corepack pnpm --filter @paperclip/web... build"
 }
