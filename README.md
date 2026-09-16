@@ -346,6 +346,15 @@ terpisah (misalnya Railway, Render, Fly.io, atau VM) lalu arahkan `API_URL` ke s
 Untuk production gunakan `DATA_DRIVER=prisma` dengan PostgreSQL; filesystem Vercel
 bersifat ephemeral dan tidak cocok untuk `DATA_DRIVER=file`.
 
+**Jangan membuat project Vercel dengan Root Directory `apps/api`.** Folder itu tidak
+punya `vercel.json` dan tidak punya folder `public/`, sehingga preset jatuh ke
+`Other` dan deployment berhenti: install tidak menemukan `pnpm-lock.yaml` (file itu
+ada di luar Root Directory) atau build berhenti di tahap output karena `public/`
+tidak pernah dibuat. NestJS bukan aplikasi statis maupun Next.js, jadi
+`apps/api` memang tidak bisa dideploy lewat alur project seperti ini — repoint
+project tersebut ke Root Directory `apps/web`, atau hapus lalu deploy API-nya
+terpisah.
+
 ### Troubleshooting
 
 | Gejala di Vercel                                                        | Penyebab & solusi                                                                                                                                                                                                                              |
@@ -359,6 +368,7 @@ bersifat ephemeral dan tidak cocok untuk `DATA_DRIVER=file`.
 | `Error: No "package.json" file found` / install memakai npm              | Root Directory menunjuk folder yang tidak punya `package.json` (mis. sisa struktur lama). Set ke `apps/web` (mode utama) atau kosongkan ke `./` (mode alternatif), lalu **Redeploy**.                                                              |
 | Halaman ter-deploy tapi semua data kosong / `ApiError`                  | `API_URL` belum di-set (atau API NestJS belum online). Tanpa `API_URL`, rewrite `/api/*` di `next.config.mjs` jatuh ke `http://127.0.0.1:4000` yang tidak ada di runtime Vercel.                                                                    |
 | Preview tidak ter-build padahal hanya `apps/api` yang berubah            | Di mode Root Directory `apps/web`, aktifkan **Skip deployment** pada bagian Root Directory di project settings supaya deployment yang tidak terpengaruh commit dilewati otomatis.                                                                |
+| Check Vercel merah terus dengan nama project `…-api`                    | Project itu memakai Root Directory `apps/api`. NestJS bukan app statis/Next.js, `apps/api` juga tidak punya `vercel.json` maupun `public/`, jadi deployment selalu gagal di install atau di tahap output. Repoint Root Directory-nya ke `apps/web`, atau hapus project itu dan jalankan API di service Node.js terpisah (lihat *API dan database production*). |
 
 ---
 
