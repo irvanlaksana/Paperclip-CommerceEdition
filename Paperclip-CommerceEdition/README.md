@@ -246,7 +246,42 @@ is still scaffolding.
 
 ---
 
-## 7. Known limitations
+## 7. Deploy otomatis ke Vercel
+
+Konfigurasi deployment sudah disimpan di [`vercel.json`](./vercel.json). Konfigurasi
+ini memakai pnpm workspace, membangun `@paperclip/shared` sebelum Next.js, dan
+menghasilkan output dari `apps/web/.next`.
+
+### Setup satu kali di Vercel
+
+1. Di Vercel pilih **Add New → Project**, lalu import repository GitHub ini.
+2. Set **Root Directory** ke `Paperclip-CommerceEdition` (folder ini adalah root
+   workspace pnpm; jangan memilih `apps/web` karena web memakai package shared di
+   luar folder tersebut).
+3. Pilih framework **Next.js** dan biarkan Install Command, Build Command, serta
+   Output Directory mengikuti `vercel.json`.
+4. Gunakan Node.js `20.19.0` atau yang lebih baru.
+5. Tambahkan environment variable `API_URL` untuk environment **Production** dan
+   **Preview**. Isinya adalah URL publik API NestJS, tanpa trailing slash, contoh:
+   `https://paperclip-api.example.com`.
+6. Klik **Deploy** dan aktifkan Git integration. Setelah itu setiap push ke `main`
+   membuat production deployment dan setiap Pull Request membuat preview deployment.
+
+`API_URL` dipakai oleh Next.js di server melalui rewrite `/api/*`, sehingga browser
+hanya tetap memanggil URL Vercel yang sama-origin. Jangan menaruh API key AI di
+`NEXT_PUBLIC_*`.
+
+### API dan database production
+
+`vercel.json` ini mendeploy dashboard Next.js. API NestJS pada `apps/api` masih
+merupakan server HTTP long-running, jadi deploy API ke service Node.js terpisah
+(misalnya Railway, Render, Fly.io, atau VM) lalu arahkan `API_URL` ke sana. Untuk
+production gunakan `DATA_DRIVER=prisma` dengan PostgreSQL; filesystem Vercel
+bersifat ephemeral dan tidak cocok untuk `DATA_DRIVER=file`.
+
+---
+
+## 8. Known limitations
 
 - **Marketplace publish** (Shopee/Tokopedia/TikTok Shop/Lazada) is an adapter stub;
   each channel needs its own OAuth + request signing. Product *import* from a URL is
