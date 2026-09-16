@@ -172,6 +172,10 @@ curl -X POST localhost:4000/content/runs -H 'content-type: application/json' -d 
 
 ## 4. Architecture
 
+Root repository adalah root workspace pnpm: `package.json`, `pnpm-lock.yaml`,
+`pnpm-workspace.yaml`, `tsconfig.base.json` dan `vercel.json` semuanya berada di
+level teratas.
+
 ```
 apps/
   api/    NestJS 11 (CommonJS, NodeNext)
@@ -248,22 +252,52 @@ is still scaffolding.
 
 ## 7. Deploy otomatis ke Vercel
 
-Konfigurasi deployment sudah disimpan di [`vercel.json`](./vercel.json). Konfigurasi
-ini memakai pnpm workspace, membangun `@paperclip/shared` sebelum Next.js, dan
-menghasilkan output dari `apps/web/.next`.
+Konfigurasi deployment disimpan di [`vercel.json`](./vercel.json) pada **root
+repository** (satu level dengan `package.json`, `pnpm-lock.yaml` dan
+`pnpm-workspace.yaml`). Konfigurasi ini memakai pnpm workspace, membangun
+`@paperclip/shared` sebelum Next.js, dan menghasilkan output dari
+`apps/web/.next`.
+
+```json
+{
+  "framework": "nextjs",
+  "installCommand": "corepack pnpm install --frozen-lockfile",
+  "buildCommand": "corepack pnpm --filter @paperclip/shared build && corepack pnpm --filter @paperclip/web build",
+  "outputDirectory": "apps/web/.next"
+}
+```
+
+> **Catatan struktur:** root workspace pnpm harus berada di root repository.
+> Kalau seluruh isi workspace ditaruh di dalam subfolder (misalnya
+> `Paperclip-CommerceEdition/`), Vercel mendeteksi framework dari root repository,
+> tidak menemukan `package.json` di sana, lalu **Application/Framework Preset**
+> jatuh ke `Other` dan `vercel.json` ikut tidak terbaca.
 
 ### Setup satu kali di Vercel
 
 1. Di Vercel pilih **Add New → Project**, lalu import repository GitHub ini.
-2. Set **Root Directory** ke `Paperclip-CommerceEdition` (folder ini adalah root
-   workspace pnpm; jangan memilih `apps/web` karena web memakai package shared di
-   luar folder tersebut).
-3. Pilih framework **Next.js** dan biarkan Install Command, Build Command, serta
-   Output Directory mengikuti `vercel.json`.
-4. Gunakan Node.js `20.19.0` atau yang lebih baru.
-5. Tambahkan environment variable `API_URL` untuk environment **Production** dan
-   **Preview**. Isinya adalah URL publik API NestJS, tanpa trailing slash, contoh:
-   `https://paperclip-api.example.com`.
+2. **Root Directory** dikosongkan / dibiarkan `./`. Jangan memilih `apps/web`,
+   karena web memakai package workspace (`@paperclip/shared`) yang berada di luar
+   folder tersebut.
+3. **Application / Framework Preset** biarkan pada hasil deteksi otomatis
+   (**Next.js**). Kalau dropdown-nya masih menampilkan `Other`, itu tanda project
+   masih memakai struktur lama: klik **Refresh** pada deteksi framework setelah
+   commit perapihan struktur ini ter-deploy, atau pilih `Next.js` manual lalu
+   pastikan Install/Build/Output **tidak** di-override agar mengikuti `vercel.json`.
+4. **Node.js Version**: `20.19.0` atau lebih baru (default Vercel, Node 22, sudah
+   memenuhi `engines` di `package.json`).
+5. Tambahkan environment variable:
+
+   | Variable                     | Nilai                                        | Keterangan                                                                                                             |
+   | ---------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+   | `API_URL`                    | `https://paperclip-api.example.com`          | URL publik API NestJS tanpa trailing slash. Wajib untuk **Production** dan **Preview**.                                 |
+   | `ENABLE_EXPERIMENTAL_COREPACK` | `1`                                        | Opsional tapi disarankan: membuat Vercel membaca `packageManager` (`pnpm@11.27.0`) dari root `package.json`.            |
+
+   Corepack penting di sini: `pnpm-lock.yaml` memakai `lockfileVersion: 9.0` dan
+   workspace ini di-pin ke pnpm 11, sedangkan pnpm bawaan Vercel (tanpa corepack)
+   berada di bawah versi itu. `corepack pnpm ...` pada Install/Build Command sudah
+   memaksa versi yang benar, jadi build tetap jalan walau `ENABLE_EXPERIMENTAL_COREPACK`
+   belum di-set.
 6. Klik **Deploy** dan aktifkan Git integration. Setelah itu setiap push ke `main`
    membuat production deployment dan setiap Pull Request membuat preview deployment.
 
@@ -278,6 +312,18 @@ merupakan server HTTP long-running, jadi deploy API ke service Node.js terpisah
 (misalnya Railway, Render, Fly.io, atau VM) lalu arahkan `API_URL` ke sana. Untuk
 production gunakan `DATA_DRIVER=prisma` dengan PostgreSQL; filesystem Vercel
 bersifat ephemeral dan tidak cocok untuk `DATA_DRIVER=file`.
+
+### Troubleshooting
+
+| Gejala di Vercel                                                        | Penyebab & solusi                                                                                                                                                                                                                          |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Application/Framework Preset** kosong atau `Other`                    | Vercel tidak menemukan `package.json` di Root Directory yang dipakai. Pastikan Root Directory = `./` (root repo) dan file `package.json` + `vercel.json` memang berada di level teratas, bukan di dalam subfolder.                            |
+| `Error: No "package.json" file found` / install memakai npm              | Root Directory masih menunjuk folder lama yang sudah tidak ada setelah perapihan struktur. Kosongkan isian Root Directory, lalu **Redeploy**.                                                                                                 |
+| `No Next.js version detected`                                           | Preset `Other` + build command default. Pilih preset **Next.js**, atau biarkan `framework: nextjs` di `vercel.json` yang bekerja (jangan override Build Command di dashboard).                                                                  |
+| `ERR_PNPM_UNSUPPORTED_ENGINE` / lockfile tidak cocok saat install        | pnpm yang dipakai Vercel lebih tua dari pnpm 11. Set env `ENABLE_EXPERIMENTAL_COREPACK=1`; Install/Build Command di `vercel.json` sudah memakai `corepack pnpm` sehingga versi mengikuti `packageManager`.                                    |
+| `No Output Directory named "public" found`                              | Ada `builds` manual di `vercel.json` sehingga preset Next.js tergantikan. Repo ini sengaja tidak memakai `builds`; jangan menambahnya.                                                                                                        |
+| Halaman ter-deploy tapi semua data kosong / `ApiError`                  | `API_URL` belum di-set (atau API NestJS belum online). Tanpa `API_URL`, rewrite `/api/*` di `next.config.mjs` jatuh ke `http://127.0.0.1:4000` yang tidak ada di runtime Vercel.                                                                |
+| Preview deployment tidak ter-build saat hanya backend yang berubah       | Wajar — tambahkan `ignoreCommand` (mis. `npx turbo-ignore`) bila nanti memakai Turborepo. Saat ini build web relatif murah, jadi dibiarkan selalu jalan.                                                                                       |
 
 ---
 
