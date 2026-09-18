@@ -16,6 +16,18 @@ import {
 import { api, type ContentMeta } from '../../lib/api';
 import { RunOutput } from '../../components/content/run-output';
 import { StageProgress } from '../../components/content/stage-progress';
+import {
+  Sparkles,
+  Layers,
+  Cpu,
+  History,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  ExternalLink,
+  ChevronDown,
+} from 'lucide-react';
+import Link from 'next/link';
 
 const LOCALES = [
   { value: 'id-ID', label: 'Bahasa Indonesia' },
@@ -24,11 +36,11 @@ const LOCALES = [
 ];
 
 const TONE_LABELS: Record<string, string> = {
-  casual: 'Santai',
+  casual: 'Santai / Conversational',
   hype: 'Hype / FOMO',
-  professional: 'Profesional',
-  storytelling: 'Storytelling',
-  humorous: 'Humoris',
+  professional: 'Profesional & Elegan',
+  storytelling: 'Storytelling Emosional',
+  humorous: 'Humoris & Relatable',
 };
 
 export default function ContentStudioPage() {
@@ -65,17 +77,22 @@ export default function ContentStudioPage() {
     try {
       setHistory(await api.content.listRuns(10));
     } catch {
-      /* history is not critical */
+      /* history not critical */
     }
   }, []);
 
   useEffect(() => {
     (async () => {
       try {
-        const [metaData, productList] = await Promise.all([api.content.meta(), api.content.products()]);
+        const [metaData, productList] = await Promise.all([
+          api.content.meta(),
+          api.content.products(),
+        ]);
         setMeta(metaData);
         setProducts(productList);
-        setProductId(productList[0]?.id ?? '');
+        if (productList.length > 0) {
+          setProductId(productList[0].id);
+        }
         await refreshProviders();
         await refreshHistory();
       } catch (err: any) {
@@ -104,7 +121,11 @@ export default function ContentStudioPage() {
         try {
           const current = await api.content.getRun(runId);
           setRun(current);
-          if (current.status === 'COMPLETED' || current.status === 'PARTIAL' || current.status === 'FAILED') {
+          if (
+            current.status === 'COMPLETED' ||
+            current.status === 'PARTIAL' ||
+            current.status === 'FAILED'
+          ) {
             stopPolling();
             setBusy(false);
             void refreshHistory();
@@ -125,11 +146,11 @@ export default function ContentStudioPage() {
 
   const startRun = async () => {
     if (!selectedProduct) {
-      setError('Pilih produk terlebih dahulu.');
+      setError('Pilih produk dari katalog terlebih dahulu.');
       return;
     }
     if (platforms.length === 0) {
-      setError('Pilih minimal satu platform.');
+      setError('Pilih minimal satu platform target.');
       return;
     }
 
@@ -151,7 +172,7 @@ export default function ContentStudioPage() {
       pollRun(created.id);
     } catch (err: any) {
       setBusy(false);
-      setError(err?.message ?? 'Gagal menjalankan pipeline.');
+      setError(err?.message ?? 'Gagal memulai pipeline.');
     }
   };
 
@@ -167,7 +188,7 @@ export default function ContentStudioPage() {
         setBusy(false);
       }
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal memuat run.');
+      setError(err?.message ?? 'Gagal memuat detail run.');
     }
   };
 
@@ -186,69 +207,77 @@ export default function ContentStudioPage() {
     if (!stageMeta[stage]) stageMeta[stage] = { label: stage, description: STAGE_META[stage].description };
   }
 
-  /* ---------------------------------- view ---------------------------------- */
-
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
         <div>
-          <h1 className="text-3xl font-bold">Content Studio</h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Pipeline produksi konten: riset produk → caption multi-platform → SEO marketplace → arahan visual → jadwal
-            posting.
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            Content Studio
+          </h1>
+          <p className="text-xs text-white/50 mt-0.5">
+            Pipeline produksi konten multi-tahap otonom: Riset → Copywriting → SEO Marketplace → Visual Script → Penjadwalan.
           </p>
         </div>
-        <div className="text-xs text-slate-500">
-          Provider aktif:{' '}
-          <span className="font-mono text-slate-300">{activeProvider || '—'}</span>
-          {providerType && providerType !== activeProvider && (
-            <span className="ml-2 text-amber-400">run ini memakai {providerType}</span>
-          )}
+
+        <div className="flex items-center gap-2 text-xs font-mono bg-white/[0.02] border border-white/[0.06] px-2.5 py-1.5 rounded-md">
+          <Cpu className="w-3.5 h-3.5 text-[#828fff]" />
+          <span className="text-white/40">Model:</span>
+          <span className="text-white/80">{activeProvider || '—'}</span>
         </div>
-      </header>
+      </div>
 
       {error && (
-        <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-200">
           {error}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        {/* ------------------------------ config ------------------------------ */}
+      <div className="grid gap-6 lg:grid-cols-[340px_1fr] items-start">
+        {/* Left Column: Configuration & History */}
         <div className="space-y-4">
-          <section className="card space-y-4">
-            <h2 className="font-semibold">Konfigurasi</h2>
+          <div className="card space-y-4">
+            <div className="pb-2 border-b border-white/[0.06] flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/90">
+                Konfigurasi Pipeline
+              </span>
+              <span className="text-[10px] font-mono text-white/40">v1.1</span>
+            </div>
 
-            <div className="space-y-2">
+            {/* Product Picker */}
+            <div className="space-y-1.5">
               <label className="label" htmlFor="product">
-                Produk
+                Pilih Produk
               </label>
               <select
                 id="product"
                 className="input"
                 value={productId}
-                onChange={(event) => setProductId(event.target.value)}
+                onChange={(e) => setProductId(e.target.value)}
               >
                 {products.length === 0 && <option value="">(katalog kosong)</option>}
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
                   </option>
                 ))}
               </select>
               {selectedProduct && (
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {selectedProduct.category ? `${selectedProduct.category} · ` : ''}
-                  {selectedProduct.price
-                    ? `${(selectedProduct.currency ?? 'IDR')} ${Number(selectedProduct.price).toLocaleString('id-ID')}`
-                    : 'harga belum diisi'}
-                </p>
+                <div className="text-[11px] font-mono text-white/40 flex items-center gap-1.5 pt-0.5">
+                  <span className="text-white/60">{selectedProduct.category ?? 'Tanpa kategori'}</span>
+                  <span>·</span>
+                  <span>
+                    {(selectedProduct.currency ?? 'IDR')}{' '}
+                    {Number(selectedProduct.price ?? 0).toLocaleString('id-ID')}
+                  </span>
+                </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <span className="label">Platform</span>
-              <div className="grid grid-cols-2 gap-2">
+            {/* Target Platforms */}
+            <div className="space-y-1.5">
+              <span className="label">Platform Target</span>
+              <div className="grid grid-cols-2 gap-1.5">
                 {CONTENT_PLATFORMS.map((platform) => {
                   const active = platforms.includes(platform);
                   return (
@@ -256,71 +285,75 @@ export default function ContentStudioPage() {
                       key={platform}
                       type="button"
                       onClick={() => toggle<ContentPlatform>(platforms, platform, setPlatforms)}
-                      className={`p-2 text-xs rounded-md border transition-colors ${
+                      className={`px-2.5 py-1.5 text-xs rounded-md border text-left transition-colors font-medium flex items-center justify-between ${
                         active
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                          ? 'bg-[#5e6ad2]/20 border-[#828fff]/50 text-[#828fff]'
+                          : 'bg-white/[0.02] border-white/[0.06] text-white/60 hover:text-white/80 hover:bg-white/[0.05]'
                       }`}
                     >
-                      {meta?.platforms.find((p) => p.value === platform)?.label ?? platform}
+                      <span className="truncate">
+                        {meta?.platforms.find((p) => p.value === platform)?.label ?? platform}
+                      </span>
+                      {active && <span className="w-1.5 h-1.5 rounded-full bg-[#828fff]" />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="label">Tahap pipeline</span>
-              <div className="space-y-1.5">
+            {/* Pipeline Stages checklist */}
+            <div className="space-y-1.5">
+              <span className="label">Tahap Eksekusi</span>
+              <div className="space-y-1 bg-white/[0.01] p-2 rounded border border-white/[0.04]">
                 {PIPELINE_STAGES.map((stage) => {
                   const checked = stages.includes(stage);
                   return (
                     <label
                       key={stage}
-                      className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer hover:text-slate-100"
+                      className="flex items-center gap-2 text-xs text-white/70 hover:text-white cursor-pointer select-none py-0.5"
                     >
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-blue-600"
+                        className="rounded accent-[#5e6ad2] bg-white/10"
                         checked={checked}
                         onChange={() => toggle<PipelineStage>(stages, stage, setStages)}
                       />
-                      <span>
-                        <span className="font-medium">{stageMeta[stage].label}</span>
-                        <span className="block text-slate-500">{stageMeta[stage].description}</span>
-                      </span>
+                      <span className="font-medium text-[12px]">{stageMeta[stage].label}</span>
                     </label>
                   );
                 })}
               </div>
-              <p className="text-[11px] text-slate-500">
-                Tahap yang dibutuhkan sebagai dependensi ikut dijalankan otomatis.
-              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
+            {/* Tone & Locale */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="tone">
-                  Tone
+                  Tone Voice
                 </label>
                 <select
                   id="tone"
-                  className="input"
+                  className="input text-xs"
                   value={tone}
-                  onChange={(event) => setTone(event.target.value as ContentTone)}
+                  onChange={(e) => setTone(e.target.value as ContentTone)}
                 >
-                  {CONTENT_TONES.map((value) => (
-                    <option key={value} value={value}>
-                      {TONE_LABELS[value] ?? value}
+                  {CONTENT_TONES.map((val) => (
+                    <option key={val} value={val}>
+                      {TONE_LABELS[val] ?? val}
                     </option>
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="locale">
                   Bahasa
                 </label>
-                <select id="locale" className="input" value={locale} onChange={(event) => setLocale(event.target.value)}>
+                <select
+                  id="locale"
+                  className="input text-xs"
+                  value={locale}
+                  onChange={(e) => setLocale(e.target.value)}
+                >
                   {LOCALES.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
@@ -330,135 +363,168 @@ export default function ContentStudioPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* AI Provider override */}
+            <div className="space-y-1.5">
               <label className="label" htmlFor="provider">
-                Provider AI untuk run ini
+                Provider Override <span className="normal-case text-white/40">(opsional)</span>
               </label>
               <select
                 id="provider"
-                className="input"
+                className="input text-xs"
                 value={providerType}
-                onChange={(event) => setProviderType(event.target.value)}
+                onChange={(e) => setProviderType(e.target.value)}
               >
-                <option value="">Default sistem ({activeProvider || '—'})</option>
+                <option value="">Default Sistem ({activeProvider || '—'})</option>
                 {providers
-                  .filter((provider) => provider.enabled)
-                  .map((provider) => (
-                    <option key={provider.id} value={provider.type} disabled={!provider.ready}>
-                      {provider.type} · {provider.model}
-                      {provider.ready ? '' : ' (belum siap)'}
-                      {provider.source === 'ENV' ? ' · dari .env' : provider.source === 'STORE' ? ' · tersimpan' : ''}
+                  .filter((p) => p.enabled)
+                  .map((p) => (
+                    <option key={p.id} value={p.type} disabled={!p.ready}>
+                      {p.type} — {p.model}
+                      {!p.ready ? ' (kunci belum siap)' : ''}
                     </option>
                   ))}
               </select>
-              <p className="text-[11px] text-slate-500">
-                Ganti provider tanpa mengubah kode —{' '}
-                <a href="/settings" className="text-blue-400 hover:underline">
-                  kelola di Settings
-                </a>
-                .
-              </p>
             </div>
 
-            <div className="space-y-2">
-              <label className="label" htmlFor="brand">
-                Nama brand <span className="normal-case text-slate-600">(opsional)</span>
+            {/* Optional brand & CTA */}
+            <div className="space-y-2 pt-1 border-t border-white/[0.04]">
+              <div className="space-y-1">
+                <label className="label" htmlFor="brand">
+                  Nama Brand
+                </label>
+                <input
+                  id="brand"
+                  className="input text-xs"
+                  placeholder="Contoh: AeroShop"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="label" htmlFor="cta">
+                  Link CTA / Toko
+                </label>
+                <input
+                  id="cta"
+                  className="input text-xs font-mono"
+                  placeholder="https://..."
+                  value={ctaUrl}
+                  onChange={(e) => setCtaUrl(e.target.value)}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-white/70 hover:text-white cursor-pointer select-none pt-1">
+                <input
+                  type="checkbox"
+                  className="rounded accent-[#5e6ad2]"
+                  checked={includeHashtags}
+                  onChange={(e) => setIncludeHashtags(e.target.checked)}
+                />
+                <span>Generate Hashtag & Keywords</span>
               </label>
-              <input
-                id="brand"
-                className="input"
-                value={brandName}
-                onChange={(event) => setBrandName(event.target.value)}
-                placeholder="contoh: TokoAudio"
-              />
             </div>
 
-            <div className="space-y-2">
-              <label className="label" htmlFor="cta">
-                Link CTA <span className="normal-case text-slate-600">(opsional)</span>
-              </label>
-              <input
-                id="cta"
-                className="input"
-                value={ctaUrl}
-                onChange={(event) => setCtaUrl(event.target.value)}
-                placeholder="https://shopee.co.id/..."
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-              <input
-                type="checkbox"
-                className="accent-blue-600"
-                checked={includeHashtags}
-                onChange={(event) => setIncludeHashtags(event.target.checked)}
-              />
-              Sertakan hashtag
-            </label>
-
-            <button type="button" className="btn btn-primary w-full" onClick={startRun} disabled={busy}>
-              {busy ? 'Memproses…' : 'Jalankan pipeline ✨'}
+            <button
+              type="button"
+              className="btn btn-primary w-full text-xs py-2 mt-2"
+              onClick={startRun}
+              disabled={busy}
+            >
+              {busy ? (
+                <>
+                  <Clock className="w-3.5 h-3.5 animate-spin" />
+                  <span>Pipeline Berjalan…</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Jalankan Pipeline</span>
+                </>
+              )}
             </button>
-          </section>
+          </div>
 
+          {/* Execution History */}
           {history.length > 0 && (
-            <section className="card space-y-3">
-              <h2 className="font-semibold text-sm">Riwayat run</h2>
-              <ul className="space-y-1.5 max-h-72 overflow-auto pr-1">
+            <div className="card space-y-2.5">
+              <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/70 flex items-center gap-1.5">
+                  <History className="w-3 h-3 text-white/40" />
+                  Riwayat Run
+                </span>
+                <span className="text-[10px] font-mono text-white/40">{history.length}</span>
+              </div>
+
+              <div className="space-y-1 max-h-56 overflow-y-auto pr-0.5">
                 {history.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => openRun(item.id)}
-                      className={`w-full text-left rounded-md border px-3 py-2 transition-colors ${
-                        run?.id === item.id
-                          ? 'border-blue-500/50 bg-blue-950/30'
-                          : 'border-slate-800 bg-slate-800/40 hover:bg-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium truncate">{item.productName}</span>
-                        <span
-                          className={`pill shrink-0 ${
-                            item.status === 'COMPLETED'
-                              ? 'bg-emerald-900/60 text-emerald-300'
-                              : item.status === 'PARTIAL'
-                                ? 'bg-amber-900/60 text-amber-300'
-                                : item.status === 'FAILED'
-                                  ? 'bg-red-900/60 text-red-300'
-                                  : 'bg-blue-900/60 text-blue-300'
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {new Date(item.createdAt).toLocaleString('id-ID')} ·{' '}
-                        {item.workProducts.length} work product
-                      </div>
-                    </button>
-                  </li>
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openRun(item.id)}
+                    className={`w-full text-left p-2 rounded border text-xs transition-colors block ${
+                      run?.id === item.id
+                        ? 'border-[#828fff]/50 bg-[#5e6ad2]/10 text-white'
+                        : 'border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] text-white/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-medium truncate max-w-[170px]">
+                        {item.productName}
+                      </span>
+                      <span
+                        className={`text-[9px] font-mono px-1 rounded ${
+                          item.status === 'COMPLETED'
+                            ? 'text-emerald-300 bg-emerald-500/10'
+                            : item.status === 'PARTIAL'
+                              ? 'text-amber-300 bg-amber-500/10'
+                              : 'text-white/40 bg-white/5'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-mono text-white/40 mt-0.5">
+                      {new Date(item.createdAt).toLocaleDateString('id-ID')} · {item.platforms.length} platform
+                    </div>
+                  </button>
                 ))}
-              </ul>
-            </section>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* ------------------------------- output ------------------------------ */}
+        {/* Right Column: Execution Progress & Output Tabs */}
         <div className="space-y-4 min-w-0">
-          <section className="card space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Progres pipeline</h2>
-              {busy && <span className="text-xs text-blue-300 animate-pulse-soft">menghasilkan konten…</span>}
+          <div className="card space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/90">
+                  Status Eksekusi Agen
+                </span>
+                {run && (
+                  <span className="text-[11px] font-mono text-white/40">
+                    #{run.id.slice(0, 8)}
+                  </span>
+                )}
+              </div>
+              {busy && (
+                <span className="text-[11px] font-mono text-[#828fff] flex items-center gap-1.5 animate-pulse-soft">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#828fff]" />
+                  Agen sedang bekerja…
+                </span>
+              )}
             </div>
+
             {run ? (
               <StageProgress stages={run.stages} meta={stageMeta} />
             ) : (
-              <p className="text-sm text-slate-500">
-                Belum ada run. Atur konfigurasi di kiri lalu tekan <span className="text-slate-300">Jalankan pipeline</span>.
-              </p>
+              <div className="py-8 text-center text-xs text-white/40">
+                Belum ada pipeline aktif. Pilih produk di sebelah kiri dan klik{' '}
+                <span className="text-white/80 font-medium">Jalankan Pipeline</span>.
+              </div>
             )}
-          </section>
+          </div>
 
           {run && <RunOutput run={run} onChanged={() => void openRun(run.id)} />}
         </div>

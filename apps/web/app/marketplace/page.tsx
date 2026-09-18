@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react';
 import type { AIProviderDTO } from '@paperclip/shared';
 import { api } from '../../lib/api';
+import {
+  ShoppingBag,
+  ArrowRight,
+  ExternalLink,
+  Sparkles,
+  CheckCircle2,
+  Globe,
+  Store,
+} from 'lucide-react';
+import Link from 'next/link';
 
 interface Channel {
   id: string;
@@ -11,7 +21,6 @@ interface Channel {
   docs: string;
 }
 
-/** Marketplace Hub - import a product page and let the AI clean it up. */
 export default function MarketplacePage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [providers, setProviders] = useState<AIProviderDTO[]>([]);
@@ -24,7 +33,10 @@ export default function MarketplacePage() {
   useEffect(() => {
     (async () => {
       try {
-        const [channelList, providerList] = await Promise.all([api.marketplace.channels(), api.ai.providers()]);
+        const [channelList, providerList] = await Promise.all([
+          api.marketplace.channels(),
+          api.ai.providers(),
+        ]);
         setChannels(channelList);
         setProviders(providerList.providers);
       } catch (err: any) {
@@ -35,7 +47,7 @@ export default function MarketplacePage() {
 
   const runImport = async (save: boolean) => {
     if (!url.trim()) {
-      setError('Masukkan URL produk terlebih dahulu.');
+      setError('Masukkan URL produk e-commerce terlebih dahulu.');
       return;
     }
     setBusy(true);
@@ -47,115 +59,181 @@ export default function MarketplacePage() {
         : await api.marketplace.importFromUrl(url.trim(), provider || undefined);
       setResult(data);
     } catch (err: any) {
-      setError(err?.message ?? 'Import gagal.');
+      setError(err?.message ?? 'Import produk gagal.');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">Marketplace Hub</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Ambil data produk dari URL, biarkan AI merapikan judul, deskripsi, dan atribut, lalu simpan ke katalog.
-        </p>
-      </header>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            Marketplace Hub
+          </h1>
+          <p className="text-xs text-white/50 mt-0.5">
+            Ekstraksi data produk dari URL e-commerce (Shopee, Tokopedia, dll) dan pembersihan otomatis menggunakan AI.
+          </p>
+        </div>
+      </div>
 
       {error && (
-        <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-200">
+          {error}
+        </div>
       )}
 
-      <section className="card space-y-4">
-        <h2 className="font-semibold">Import produk dari URL</h2>
-        <div className="grid gap-4 md:grid-cols-[1fr_260px]">
-          <div className="space-y-2">
-            <label className="label" htmlFor="url">URL halaman produk</label>
+      {/* URL Ingestion Card */}
+      <div className="card space-y-4">
+        <div className="pb-2 border-b border-white/[0.06] flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-white/90 flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-[#828fff]" />
+            Import Produk dari URL
+          </span>
+          <span className="text-[10px] font-mono text-white/40">Scraper + AI Parser</span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[1fr_240px]">
+          <div className="space-y-1.5">
+            <label className="label" htmlFor="url">
+              URL Halaman Produk
+            </label>
             <input
               id="url"
               className="input font-mono text-xs"
-              placeholder="https://shopee.co.id/produk-contoh-i.123.456"
+              placeholder="https://shopee.co.id/product-name-i.12345.67890"
               value={url}
-              onChange={(event) => setUrl(event.target.value)}
+              onChange={(e) => setUrl(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <label className="label" htmlFor="import-provider">Provider AI</label>
-            <select id="import-provider" className="input" value={provider} onChange={(event) => setProvider(event.target.value)}>
-              <option value="">Default sistem</option>
+
+          <div className="space-y-1.5">
+            <label className="label" htmlFor="import-provider">
+              AI Provider Parser
+            </label>
+            <select
+              id="import-provider"
+              className="input text-xs"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            >
+              <option value="">Default Sistem</option>
               {providers
-                .filter((item) => item.enabled && item.ready)
-                .map((item) => (
-                  <option key={item.id} value={item.type}>
-                    {item.type} · {item.model}
+                .filter((p) => p.enabled && p.ready)
+                .map((p) => (
+                  <option key={p.id} value={p.type}>
+                    {p.type} · {p.model}
                   </option>
                 ))}
             </select>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-primary" onClick={() => runImport(false)} disabled={busy}>
-            {busy ? 'Memproses…' : 'Ambil & rapikan'}
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            type="button"
+            className="btn btn-primary text-xs"
+            onClick={() => runImport(false)}
+            disabled={busy}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{busy ? 'Mengekstrak…' : 'Ekstrak & Rapikan AI'}</span>
           </button>
-          <button type="button" className="btn btn-ghost" onClick={() => runImport(true)} disabled={busy}>
-            Simpan langsung ke katalog
+          <button
+            type="button"
+            className="btn btn-ghost text-xs"
+            onClick={() => runImport(true)}
+            disabled={busy}
+          >
+            <span>Simpan Langsung ke Katalog</span>
           </button>
         </div>
-        <p className="text-[11px] text-slate-500">
-          Scrape memakai Open Graph + tag judul; halaman yang butuh JavaScript memerlukan scraper tambahan.
-        </p>
-      </section>
+      </div>
 
+      {/* Extraction Results */}
       {result && (
-        <section className="card space-y-4">
-          <h2 className="font-semibold">Hasil</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-4 space-y-2">
-              <div className="label">Data mentah (scrape)</div>
-              <pre className="text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-words">
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/90">
+              Hasil Ekstraksi & Restrukturisasi AI
+            </span>
+            {result.savedProduct && (
+              <span className="text-xs text-emerald-300 flex items-center gap-1 font-mono">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Tersimpan di Katalog
+              </span>
+            )}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 text-xs">
+            <div className="p-3 rounded border border-white/[0.06] bg-black/20 space-y-1.5">
+              <span className="label text-[10px] text-white/40">Raw OpenGraph Scrape</span>
+              <pre className="text-[11px] font-mono text-white/60 whitespace-pre-wrap overflow-x-auto max-h-60">
                 {JSON.stringify(result.scraped, null, 2)}
               </pre>
             </div>
-            <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/10 p-4 space-y-2">
-              <div className="label text-emerald-400">Sudah dirapikan AI</div>
-              <pre className="text-[11px] font-mono text-emerald-100/80 whitespace-pre-wrap break-words">
+
+            <div className="p-3 rounded border border-emerald-500/20 bg-emerald-500/[0.03] space-y-1.5">
+              <span className="label text-[10px] text-emerald-400">Restrukturisasi AI</span>
+              <pre className="text-[11px] font-mono text-emerald-200/90 whitespace-pre-wrap overflow-x-auto max-h-60">
                 {JSON.stringify(result.enhanced, null, 2)}
               </pre>
             </div>
           </div>
+
           {result.savedProduct && (
-            <p className="text-xs text-emerald-300">
-              Tersimpan di katalog sebagai “{result.savedProduct.name}”.{' '}
-              <a href="/products" className="underline">Lihat produk</a>
-            </p>
+            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
+              <span className="text-white/60">
+                Produk baru: <strong className="text-white">{result.savedProduct.name}</strong>
+              </span>
+              <Link href="/products" className="text-[#828fff] hover:underline flex items-center gap-1">
+                Buka Katalog Produk <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           )}
-        </section>
+        </div>
       )}
 
-      <section className="card space-y-4">
-        <h2 className="font-semibold">Kanal marketplace</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {channels.map((channel) => (
-            <div key={channel.id} className="rounded-lg border border-slate-800 bg-slate-800/40 p-4 space-y-2">
+      {/* Integrated Channels */}
+      <div className="card space-y-3">
+        <div className="pb-2 border-b border-white/[0.06]">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-white/90">
+            Konektor Kanal Marketplace
+          </h2>
+          <p className="text-[11px] text-white/45 mt-0.5">
+            Daftar kanal e-commerce yang didukung untuk listing otomatis & sinkronisasi multi-toko.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {channels.map((ch) => (
+            <div
+              key={ch.id}
+              className="p-3 rounded-md border border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.03] transition-colors space-y-2 text-xs"
+            >
               <div className="flex items-center justify-between">
-                <span className="font-medium text-sm">{channel.name}</span>
-                <span className="pill bg-slate-800 text-slate-400 border border-slate-700">{channel.adapter}</span>
+                <span className="font-semibold text-white/95">{ch.name}</span>
+                <span className="pill text-[10px] font-mono border border-white/10 bg-white/5 text-white/50">
+                  {ch.adapter}
+                </span>
               </div>
-              <p className="text-[11px] text-slate-500">
-                Adapter publish belum diaktifkan. Butuh OAuth + signing per kanal.
+              <p className="text-[11px] text-white/45 leading-relaxed">
+                Konektor API standar untuk katalog dan manajemen stok e-commerce.
               </p>
               <a
-                href={channel.docs}
+                href={ch.docs}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] text-blue-400 hover:underline"
+                className="text-[11px] text-[#828fff] hover:underline inline-flex items-center gap-1 font-mono pt-1"
               >
-                Dokumentasi API →
+                <span>Dokumentasi API</span>
+                <ExternalLink className="w-3 h-3" />
               </a>
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }

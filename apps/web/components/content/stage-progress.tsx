@@ -1,19 +1,14 @@
 'use client';
 
 import type { PipelineStage, StageResult } from '@paperclip/shared';
+import {
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  SkipForward,
+  Cpu,
+} from 'lucide-react';
 
-const STATUS_STYLE: Record<string, { dot: string; text: string; label: string }> = {
-  PENDING: { dot: 'bg-slate-600', text: 'text-slate-400', label: 'Menunggu' },
-  RUNNING: { dot: 'bg-blue-500 animate-pulse-soft', text: 'text-blue-300', label: 'Berjalan' },
-  DONE: { dot: 'bg-emerald-500', text: 'text-emerald-300', label: 'Selesai' },
-  FAILED: { dot: 'bg-red-500', text: 'text-red-300', label: 'Gagal' },
-  SKIPPED: { dot: 'bg-slate-700', text: 'text-slate-500', label: 'Dilewati' },
-};
-
-/**
- * Live progress of a content run. Each row is one pipeline stage; the run
- * record is polled while generating so this reflects real backend state.
- */
 export function StageProgress({
   stages,
   meta,
@@ -22,48 +17,85 @@ export function StageProgress({
   meta: Record<PipelineStage, { label: string; description: string }>;
 }) {
   return (
-    <ol className="space-y-2">
+    <div className="space-y-1.5">
       {stages.map((stage) => {
-        const style = STATUS_STYLE[stage.status] ?? STATUS_STYLE.PENDING!;
+        const isDone = stage.status === 'DONE';
+        const isRunning = stage.status === 'RUNNING';
+        const isFailed = stage.status === 'FAILED';
+        const isPending = stage.status === 'PENDING';
+
         return (
-          <li
+          <div
             key={stage.stage}
-            className="flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-800/40 px-4 py-3"
+            className={`flex items-start gap-2.5 p-2.5 rounded-md border text-xs transition-colors ${
+              isRunning
+                ? 'border-[#828fff]/40 bg-[#5e6ad2]/10'
+                : isDone
+                  ? 'border-white/[0.06] bg-white/[0.01]'
+                  : isFailed
+                    ? 'border-red-500/30 bg-red-500/10'
+                    : 'border-white/[0.03] bg-transparent opacity-60'
+            }`}
           >
-            <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${style.dot}`} />
+            <div className="mt-0.5 shrink-0">
+              {isDone && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+              {isRunning && <Clock className="w-3.5 h-3.5 text-[#828fff] animate-spin" />}
+              {isFailed && <AlertCircle className="w-3.5 h-3.5 text-red-400" />}
+              {isPending && <div className="w-3.5 h-3.5 rounded-full border border-white/20" />}
+            </div>
+
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span className="font-medium text-sm">{meta[stage.stage]?.label ?? stage.stage}</span>
-                <span className={`text-xs ${style.text}`}>{style.label}</span>
-                {typeof stage.durationMs === 'number' && (
-                  <span className="text-xs text-slate-500">{stage.durationMs} ms</span>
-                )}
-                {stage.model && <span className="text-xs text-slate-500 font-mono">{stage.model}</span>}
-                {stage.viaFallback && (
-                  <span
-                    className="pill bg-amber-900/60 text-amber-300"
-                    title="Provider yang diminta gagal, hasil ini datang dari provider cadangan."
-                  >
-                    fail-over → {stage.providerType}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-white/90">
+                    {meta[stage.stage]?.label ?? stage.stage}
                   </span>
-                )}
+                  <span
+                    className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                      isDone
+                        ? 'text-emerald-400 bg-emerald-500/10'
+                        : isRunning
+                          ? 'text-[#828fff] bg-[#5e6ad2]/20'
+                          : isFailed
+                            ? 'text-red-400 bg-red-500/10'
+                            : 'text-white/40'
+                    }`}
+                  >
+                    {stage.status}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-[10px] font-mono text-white/40">
+                  {typeof stage.durationMs === 'number' && (
+                    <span>{stage.durationMs}ms</span>
+                  )}
+                  {stage.model && (
+                    <span className="text-white/50">{stage.model}</span>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {meta[stage.stage]?.description ?? ''}
-              </p>
-              {stage.error && (
-                <p className="text-xs text-red-300/90 mt-1 break-words">{stage.error}</p>
-              )}
-              {stage.usage && stage.usage.totalTokens > 0 && (
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {stage.usage.promptTokens} prompt + {stage.usage.completionTokens} completion ={' '}
-                  {stage.usage.totalTokens} token
+
+              {meta[stage.stage]?.description && (
+                <p className="text-[11px] text-white/45 mt-0.5">
+                  {meta[stage.stage].description}
                 </p>
               )}
+
+              {stage.error && (
+                <p className="text-[11px] text-red-300 mt-1 font-mono">
+                  {stage.error}
+                </p>
+              )}
+
+              {stage.usage && stage.usage.totalTokens > 0 && (
+                <div className="text-[10px] font-mono text-white/35 mt-1">
+                  {stage.usage.totalTokens} tokens ({stage.usage.promptTokens} in / {stage.usage.completionTokens} out)
+                </div>
+              )}
             </div>
-          </li>
+          </div>
         );
       })}
-    </ol>
+    </div>
   );
 }

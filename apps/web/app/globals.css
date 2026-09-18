@@ -2,32 +2,69 @@
 
 :root {
   color-scheme: dark;
+
+  /* Paperclip AI & Linear inspired design tokens */
+  --bg-canvas: #090a0f;
+  --bg-sidebar: #0d0e12;
+  --bg-card: #12141a;
+  --bg-subtle: #171922;
+  --bg-muted: #1e212b;
+  --bg-hover: #232734;
+
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-focus: rgba(255, 255, 255, 0.25);
+
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --text-faint: #4b5563;
+
+  --accent-primary: #5e6ad2;
+  --accent-primary-hover: #6875e5;
+  --accent-primary-faint: rgba(94, 106, 210, 0.12);
+  --accent-primary-border: rgba(94, 106, 210, 0.35);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--border-subtle);
+  }
+
   html,
   body {
     height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  body {
-    @apply bg-slate-950 text-slate-50 antialiased;
-  }
-
-  /* Thin scrollbars that match the dark surface palette. */
+  /* Sleek, minimal dark scrollbars */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-slate-700) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
   }
 
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   *::-webkit-scrollbar-thumb {
-    background: var(--color-slate-700);
+    background: rgba(255, 255, 255, 0.14);
     border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 
   *::-webkit-scrollbar-track {
@@ -35,48 +72,139 @@
   }
 }
 
-/**
- * Component classes.
- *
- * Tailwind v4 only allows `@apply` with real utilities, so the button base and
- * its colour variants are separate classes: combine them in markup, e.g.
- * `class="btn btn-primary"` or `class="btn-sm btn-ghost"`.
- */
 @layer components {
+  /* Minimalist Card */
   .card {
-    @apply bg-slate-900 border border-slate-800 rounded-xl p-6;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    padding: 1.25rem;
+    transition: border-color 0.15s ease;
   }
 
+  /* Typography labels */
   .label {
-    @apply text-xs font-medium text-slate-400 uppercase tracking-wide;
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
+  /* Form inputs: flat, crisp, minimalist */
   .input {
-    @apply w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-500;
+    width: 100%;
+    background-color: var(--bg-subtle);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    padding: 0.45rem 0.75rem;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    transition: all 0.15s ease;
   }
 
+  .input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 1px var(--accent-primary);
+    background-color: var(--bg-card);
+  }
+
+  .input::placeholder {
+    color: var(--text-muted);
+  }
+
+  /* Standard Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border-radius: 6px;
+    padding: 0.45rem 0.85rem;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.25;
+    transition: all 0.12s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.985);
   }
 
   .btn-sm {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border-radius: 5px;
+    padding: 0.28rem 0.6rem;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.12s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
   }
 
+  .btn-sm:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  /* Clean Paperclip / Linear button variants */
   .btn-primary {
-    @apply bg-blue-600 text-white hover:bg-blue-500;
+    background-color: var(--accent-primary);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--accent-primary-hover);
   }
 
   .btn-ghost {
-    @apply bg-slate-800 border border-slate-700 text-slate-200 hover:bg-slate-700;
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+
+  .btn-ghost:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: var(--border-default);
   }
 
   .btn-danger {
-    @apply bg-red-900/60 border border-red-800 text-red-100 hover:bg-red-900;
+    background-color: rgba(220, 38, 38, 0.15);
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    color: #fca5a5;
   }
 
+  .btn-danger:hover:not(:disabled) {
+    background-color: rgba(220, 38, 38, 0.25);
+    color: #fee2e2;
+  }
+
+  /* Badges / Pills */
   .pill {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    border: 1px solid transparent;
   }
 }
 
@@ -86,10 +214,10 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.45;
+    opacity: 0.4;
   }
 }
 
 .animate-pulse-soft {
-  animation: pulse-soft 1.4s ease-in-out infinite;
+  animation: pulse-soft 1.6s ease-in-out infinite;
 }

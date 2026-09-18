@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import {
+  TableProperties,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  RefreshCw,
+  Plus,
+} from 'lucide-react';
 
 type SheetStatus = Awaited<ReturnType<typeof api.sheets.status>>;
 
-/** Google Sheets integration panel. */
 export default function GoogleSheetsPage() {
   const [status, setStatus] = useState<SheetStatus | null>(null);
   const [authCode, setAuthCode] = useState('');
@@ -17,7 +24,7 @@ export default function GoogleSheetsPage() {
     try {
       setStatus(await api.sheets.status());
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal memuat status integrasi.');
+      setError(err?.message ?? 'Gagal memuat status integrasi Google Sheets.');
     }
   }, []);
 
@@ -27,7 +34,7 @@ export default function GoogleSheetsPage() {
 
   const flash = (message: string) => {
     setNotice(message);
-    setTimeout(() => setNotice(null), 5000);
+    setTimeout(() => setNotice(null), 4500);
   };
 
   const connect = async () => {
@@ -40,12 +47,12 @@ export default function GoogleSheetsPage() {
         body: JSON.stringify({ code: authCode.trim() }),
       });
       const data: any = await res.json();
-      if (data?.status === 'CONNECTED') flash('Akun Google terhubung.');
+      if (data?.status === 'CONNECTED') flash('Akun Google OAuth berhasil terhubung.');
       else setError(data?.error ?? 'Gagal menukar authorization code.');
       setAuthCode('');
       await load();
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal menghubungkan akun.');
+      setError(err?.message ?? 'Gagal menghubungkan akun Google.');
     } finally {
       setBusy(false);
     }
@@ -56,7 +63,7 @@ export default function GoogleSheetsPage() {
     setError(null);
     try {
       const result = await api.sheets.createSheet('Paperclip Product Catalog');
-      if (result.success) flash(`Spreadsheet dibuat: ${result.url ?? result.spreadsheetId}`);
+      if (result.success) flash(`Spreadsheet berhasil dibuat: ${result.url ?? result.spreadsheetId}`);
       else setError(result.error ?? 'Gagal membuat spreadsheet.');
       await load();
     } catch (err: any) {
@@ -68,14 +75,14 @@ export default function GoogleSheetsPage() {
 
   const sync = async () => {
     if (!status?.spreadsheetId) {
-      setError('Belum ada spreadsheet. Buat spreadsheet produk terlebih dahulu.');
+      setError('Belum ada spreadsheet. Buat spreadsheet katalog terlebih dahulu.');
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const result = await api.sheets.sync(status.spreadsheetId);
-      if (result.success) flash(`${result.rowsUpdated} baris produk disinkronkan.`);
+      if (result.success) flash(`${result.rowsUpdated} baris data produk berhasil disinkronkan ke Google Sheets.`);
       else setError(result.error ?? 'Sinkronisasi gagal.');
     } catch (err: any) {
       setError(err?.message ?? 'Sinkronisasi gagal.');
@@ -86,46 +93,55 @@ export default function GoogleSheetsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">Google Sheets Integration</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Sinkronkan katalog produk dan laporan ke Google Workspace lewat OAuth.
-        </p>
-      </header>
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            Google Sheets Integration
+          </h1>
+          <p className="text-xs text-white/50 mt-0.5">
+            Sinkronkan inventaris produk dan laporan produksi konten secara langsung ke Google Workspace spreadsheet.
+          </p>
+        </div>
+      </div>
 
       {error && (
-        <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-200">
+          {error}
+        </div>
       )}
       {notice && (
-        <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-200">
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-200">
           {notice}
         </div>
       )}
 
-      <section className="card space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-800 rounded-lg border border-slate-700">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center font-bold text-white">
+      {/* Account Status Card */}
+      <div className="card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded bg-white/[0.06] border border-white/[0.1] flex items-center justify-center font-bold text-xs text-emerald-400">
               G
             </div>
             <div>
-              <p className="font-medium">Google Account</p>
-              <p className="text-xs text-slate-400">
+              <div className="text-xs font-semibold text-white">Google Workspace Account</div>
+              <div className="text-[11px] font-mono text-white/40 mt-0.5">
                 {status?.connected
-                  ? `Terhubung${status.spreadsheetId ? ` · sheet ${status.spreadsheetId.slice(0, 12)}…` : ''}`
+                  ? `Terhubung · Spreadsheet ID: ${status.spreadsheetId ? status.spreadsheetId.slice(0, 16) + '…' : 'belum dipilih'}`
                   : status?.configured
-                    ? 'Credential tersedia, akun belum terhubung'
-                    : 'Belum dikonfigurasi'}
-              </p>
+                    ? 'Kredensial OAuth siap, akun belum diautorisasi'
+                    : 'Belum ada kredensial OAuth di konfigurasi'}
+              </div>
             </div>
           </div>
+
           <span
-            className={`pill ${
+            className={`pill text-[10px] font-mono border ${
               status?.connected
-                ? 'bg-emerald-900/60 text-emerald-300'
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
                 : status?.configured
-                  ? 'bg-amber-900/60 text-amber-300'
-                  : 'bg-slate-700 text-slate-300'
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                  : 'border-white/10 bg-white/5 text-white/40'
             }`}
           >
             {status?.status ?? 'LOADING'}
@@ -133,61 +149,88 @@ export default function GoogleSheetsPage() {
         </div>
 
         {status && !status.configured && (
-          <p className="text-xs text-amber-300/90 border border-amber-800/50 bg-amber-950/30 rounded-md px-3 py-2">
-            Isi <code className="font-mono">{status.missingEnv.join('</code> dan <code className="font-mono')}</code> di
-            file <code className="font-mono">.env</code>, lalu restart API.
-          </p>
-        )}
-
-        {status?.configured && !status.connected && (
-          <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
-            <div className="label">Langkah 1 — minta authorization code</div>
-            {status.authorizeUrl && (
-              <a
-                href={status.authorizeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-primary w-full sm:w-auto"
-              >
-                Buka halaman izin Google
-              </a>
-            )}
-            <div className="label pt-2">Langkah 2 — tempel code di sini</div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                className="input font-mono text-xs"
-                placeholder="4/0AfJohXn…"
-                value={authCode}
-                onChange={(event) => setAuthCode(event.target.value)}
-              />
-              <button type="button" className="btn btn-primary shrink-0" onClick={connect} disabled={busy || !authCode.trim()}>
-                Hubungkan
-              </button>
+          <div className="text-xs p-3 rounded border border-amber-500/30 bg-amber-500/10 text-amber-200/90 leading-relaxed">
+            Untuk mengaktifkan integrasi Google Sheets, sediakan environment variable berikut di <code className="font-mono text-white">.env</code>:
+            <div className="font-mono text-[11px] mt-1 text-white/70">
+              {status.missingEnv.join(', ')}
             </div>
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-3">
-            <p className="font-medium text-sm">Buat spreadsheet katalog</p>
-            <p className="text-xs text-slate-400">
-              Membuat spreadsheet baru berisi sheet “Products” dan menyimpan id-nya sebagai target sinkronisasi.
+        {status?.configured && !status.connected && (
+          <div className="p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-3 text-xs">
+            <div>
+              <span className="label text-[10px] text-white/40">1. Otorisasi Akun Google</span>
+              {status.authorizeUrl && (
+                <a
+                  href={status.authorizeUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-primary text-xs mt-1.5 inline-flex"
+                >
+                  <span>Buka Dialog Izin Google OAuth</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-white/[0.04] space-y-1.5">
+              <span className="label text-[10px] text-white/40">2. Tempel Authorization Code</span>
+              <div className="flex gap-2">
+                <input
+                  className="input font-mono text-xs"
+                  placeholder="4/0AfJohXn…"
+                  value={authCode}
+                  onChange={(e) => setAuthCode(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary text-xs shrink-0"
+                  onClick={connect}
+                  disabled={busy || !authCode.trim()}
+                >
+                  Hubungkan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sync Actions */}
+        <div className="grid gap-3 sm:grid-cols-2 pt-1">
+          <div className="p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-2 text-xs">
+            <span className="font-semibold text-white/90">Buat Spreadsheet Katalog</span>
+            <p className="text-[11px] text-white/45 leading-relaxed">
+              Membuat sheet Google Spreadsheet baru dengan format kolom siap sinkronisasi.
             </p>
-            <button type="button" className="btn btn-ghost w-full" onClick={createSheet} disabled={busy || !status?.connected}>
-              Buat spreadsheet
+            <button
+              type="button"
+              className="btn btn-ghost text-xs w-full mt-1 flex items-center justify-center gap-1.5"
+              onClick={createSheet}
+              disabled={busy || !status?.connected}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Buat Spreadsheet Baru</span>
             </button>
           </div>
-          <div className="p-4 bg-slate-800 rounded-lg border border-slate-700 space-y-3">
-            <p className="font-medium text-sm">Sinkronkan produk</p>
-            <p className="text-xs text-slate-400">
-              Menulis seluruh produk aktif (nama, SKU, harga, kategori, deskripsi, tag) ke spreadsheet.
+
+          <div className="p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-2 text-xs">
+            <span className="font-semibold text-white/90">Sinkronkan Katalog Produk</span>
+            <p className="text-[11px] text-white/45 leading-relaxed">
+              Kirim seluruh data produk (nama, SKU, harga, kategori, tags) ke spreadsheet target.
             </p>
-            <button type="button" className="btn btn-ghost w-full" onClick={sync} disabled={busy || !status?.connected}>
-              Sinkronkan sekarang
+            <button
+              type="button"
+              className="btn btn-ghost text-xs w-full mt-1 flex items-center justify-center gap-1.5"
+              onClick={sync}
+              disabled={busy || !status?.connected}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Sinkronkan Sekarang</span>
             </button>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
