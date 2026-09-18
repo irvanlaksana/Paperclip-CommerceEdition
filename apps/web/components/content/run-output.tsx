@@ -12,15 +12,27 @@ import type {
 } from '@paperclip/shared';
 import { PLATFORM_LABELS } from '@paperclip/shared';
 import { api, copyText } from '../../lib/api';
+import {
+  Copy,
+  Check,
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Search,
+  Image,
+  Calendar,
+  Sparkles,
+  ExternalLink,
+} from 'lucide-react';
 
 type TabId = 'CAPTIONS' | 'SEO' | 'VISUAL' | 'SCHEDULE' | 'RESEARCH';
 
-const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'CAPTIONS', label: 'Caption' },
-  { id: 'SEO', label: 'SEO & Marketplace' },
-  { id: 'VISUAL', label: 'Visual' },
-  { id: 'SCHEDULE', label: 'Jadwal' },
-  { id: 'RESEARCH', label: 'Riset' },
+const TABS: Array<{ id: TabId; label: string; icon: any }> = [
+  { id: 'CAPTIONS', label: 'Social Captions', icon: FileText },
+  { id: 'SEO', label: 'SEO & Listing', icon: Search },
+  { id: 'VISUAL', label: 'Visual Directives', icon: Image },
+  { id: 'SCHEDULE', label: 'Calendar Matrix', icon: Calendar },
+  { id: 'RESEARCH', label: 'Market Intelligence', icon: Sparkles },
 ];
 
 function CopyButton({ text }: { text: string }) {
@@ -33,9 +45,11 @@ function CopyButton({ text }: { text: string }) {
         setCopied(ok);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="btn-sm btn-ghost"
+      className="btn-sm btn-ghost text-xs flex items-center gap-1 text-white/60 hover:text-white"
+      title="Salin ke clipboard"
     >
-      {copied ? '✓ Tersalin' : 'Salin'}
+      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+      <span>{copied ? 'Tersalin' : 'Salin'}</span>
     </button>
   );
 }
@@ -52,29 +66,35 @@ function ApprovalRow({ wp, onChanged }: { wp: WorkProductDTO; onChanged: () => v
     }
   };
 
-  const badge =
-    wp.status === 'APPROVED'
-      ? 'bg-emerald-900/60 text-emerald-300 border-emerald-700/50'
-      : wp.status === 'REJECTED'
-        ? 'bg-red-900/50 text-red-300 border-red-700/50'
-        : 'bg-slate-800 text-slate-300 border-slate-700';
+  const isApproved = wp.status === 'APPROVED';
+  const isRejected = wp.status === 'REJECTED';
 
   return (
-    <div className="flex items-center gap-2">
-      <span className={`pill border ${badge}`}>{wp.status}</span>
+    <div className="flex items-center gap-1.5">
+      <span
+        className={`pill text-[10px] font-mono border ${
+          isApproved
+            ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+            : isRejected
+              ? 'border-red-500/40 bg-red-500/10 text-red-300'
+              : 'border-white/10 bg-white/5 text-white/50'
+        }`}
+      >
+        {wp.status}
+      </span>
       <button
         type="button"
-        disabled={busy || wp.status === 'APPROVED'}
+        disabled={busy || isApproved}
         onClick={() => setStatus('APPROVED')}
-        className="btn-sm btn-ghost disabled:opacity-40"
+        className="btn-sm btn-ghost text-[11px] !px-2 !py-0.5 text-white/70 hover:text-emerald-300"
       >
         Setujui
       </button>
       <button
         type="button"
-        disabled={busy || wp.status === 'REJECTED'}
+        disabled={busy || isRejected}
         onClick={() => setStatus('REJECTED')}
-        className="btn-sm btn-ghost disabled:opacity-40"
+        className="btn-sm btn-ghost text-[11px] !px-2 !py-0.5 text-white/70 hover:text-red-300"
       >
         Tolak
       </button>
@@ -82,7 +102,6 @@ function ApprovalRow({ wp, onChanged }: { wp: WorkProductDTO; onChanged: () => v
   );
 }
 
-/** Renders the artefacts produced by a finished (or partially finished) run. */
 export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: () => void }) {
   const [tab, setTab] = useState<TabId>('CAPTIONS');
 
@@ -115,75 +134,86 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
 
   return (
     <div className="card space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      {/* Output Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
         <div>
-          <h2 className="font-semibold">Hasil produksi</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {run.productName} · {run.platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(', ')} ·{' '}
-            <span className="font-mono">{run.providerType}</span>
-            {run.totalUsage && run.totalUsage.totalTokens > 0 && ` · ${run.totalUsage.totalTokens} token`}
-          </p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-white/90">
+              Work Products (Hasil Agen)
+            </h2>
+            <span className="text-[11px] font-mono text-white/40">· {run.productName}</span>
+          </div>
+          <div className="text-[11px] font-mono text-white/40 mt-0.5">
+            {run.platforms.map((p) => PLATFORM_LABELS[p] ?? p).join(', ')} · {run.providerType}
+            {run.totalUsage?.totalTokens ? ` · ${run.totalUsage.totalTokens} tokens` : ''}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`pill ${
-              run.status === 'COMPLETED'
-                ? 'bg-emerald-900/60 text-emerald-300'
-                : run.status === 'PARTIAL'
-                  ? 'bg-amber-900/60 text-amber-300'
-                  : run.status === 'FAILED'
-                    ? 'bg-red-900/60 text-red-300'
-                    : 'bg-blue-900/60 text-blue-300'
-            }`}
-          >
-            {run.status}
-          </span>
-        </div>
+
+        <span
+          className={`pill border text-[10px] font-mono ${
+            run.status === 'COMPLETED'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+              : run.status === 'PARTIAL'
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                : 'border-white/10 bg-white/5 text-white/60'
+          }`}
+        >
+          {run.status}
+        </span>
       </div>
 
       {usedMockFallback && (
-        <p className="text-xs text-amber-300/90 border border-amber-800/50 bg-amber-950/30 rounded-md px-3 py-2">
-          Hasil ini diproduksi oleh driver <span className="font-mono">MOCK</span> karena provider yang diminta gagal
-          dipanggil (API key salah, endpoint tidak terjangkau, atau kuota habis). Isi kontennya contoh offline — isi
-          kredensial yang benar di Settings lalu jalankan ulang.
-        </p>
+        <div className="text-xs border border-amber-500/30 bg-amber-500/10 text-amber-200/90 rounded p-2.5">
+          Output ini dibuat menggunakan fallback driver MOCK karena provider utama tidak merespons atau belum memiliki API key.
+        </div>
       )}
 
       {availableTabs.length === 0 ? (
-        <p className="text-sm text-slate-500">Belum ada hasil. Jalankan pipeline untuk menghasilkan konten.</p>
+        <div className="py-8 text-center text-xs text-white/40">
+          Belum ada data output yang dihasilkan.
+        </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-2">
-            {availableTabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  activeTab === t.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Sub Navigation Tabs */}
+          <div className="flex items-center gap-1 border-b border-white/[0.06] pb-2 overflow-x-auto">
+            {availableTabs.map((t) => {
+              const Icon = t.icon;
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
+                    active
+                      ? 'bg-white/[0.08] text-white font-semibold'
+                      : 'text-white/50 hover:text-white/80 hover:bg-white/[0.02]'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
 
+          {/* CAPTIONS TAB */}
           {activeTab === 'CAPTIONS' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {stageData.captions.map((caption) => {
                 const wp = wpFor('CAPTION', caption.platform);
                 return (
-                  <div key={caption.platform} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div
+                    key={caption.platform}
+                    className="p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/[0.04]">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">
+                        <span className="font-semibold text-xs text-white">
                           {PLATFORM_LABELS[caption.platform] ?? caption.platform}
                         </span>
-                        <span className="text-[11px] text-slate-500">
-                          {caption.characterCount} karakter · {caption.hashtags.length} hashtag
-                          {caption.bestTimeToPost ? ` · posting ${caption.bestTimeToPost}` : ''}
+                        <span className="text-[11px] font-mono text-white/40">
+                          {caption.characterCount} chars · {caption.hashtags.length} tags
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -192,23 +222,28 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
                       </div>
                     </div>
 
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-xs">
                       <div>
-                        <div className="label mb-1">Hook</div>
-                        <p className="text-slate-200">{caption.hook || '—'}</p>
+                        <span className="label text-[10px] text-white/40">Hook Headline</span>
+                        <p className="text-white/90 font-medium mt-0.5">{caption.hook || '—'}</p>
                       </div>
                       <div>
-                        <div className="label mb-1">Caption</div>
-                        <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{caption.body || '—'}</p>
+                        <span className="label text-[10px] text-white/40">Body Caption</span>
+                        <p className="text-white/70 whitespace-pre-wrap leading-relaxed mt-0.5 font-sans">
+                          {caption.body || '—'}
+                        </p>
                       </div>
                       <div>
-                        <div className="label mb-1">CTA</div>
-                        <p className="text-slate-200">{caption.cta || '—'}</p>
+                        <span className="label text-[10px] text-white/40">Call To Action (CTA)</span>
+                        <p className="text-[#828fff] font-mono text-[11px] mt-0.5">{caption.cta || '—'}</p>
                       </div>
                       {caption.hashtags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
+                        <div className="flex flex-wrap gap-1 pt-1">
                           {caption.hashtags.map((tag) => (
-                            <span key={tag} className="text-[11px] text-blue-300 bg-blue-950/60 border border-blue-900/50 px-2 py-0.5 rounded">
+                            <span
+                              key={tag}
+                              className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.03] border border-white/[0.06] text-white/50"
+                            >
                               {tag}
                             </span>
                           ))}
@@ -221,42 +256,58 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
             </div>
           )}
 
+          {/* SEO TAB */}
           {activeTab === 'SEO' && stageData.seo && (
-            <div className="space-y-4 text-sm">
+            <div className="space-y-3.5 p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] text-xs">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="label mb-1">Judul marketplace ({stageData.seo.marketplaceTitle.length} karakter)</div>
-                  <p className="font-medium text-slate-100">{stageData.seo.marketplaceTitle}</p>
+                  <span className="label text-[10px] text-white/40">
+                    Marketplace Title ({stageData.seo.marketplaceTitle.length} chars)
+                  </span>
+                  <p className="font-semibold text-white mt-1 text-sm">
+                    {stageData.seo.marketplaceTitle}
+                  </p>
                 </div>
                 <CopyButton text={stageData.seo.marketplaceTitle} />
               </div>
 
               <div>
-                <div className="label mb-1">Meta description</div>
-                <p className="text-slate-300">{stageData.seo.metaDescription}</p>
+                <span className="label text-[10px] text-white/40">Meta Description</span>
+                <p className="text-white/70 mt-1 leading-relaxed">
+                  {stageData.seo.metaDescription}
+                </p>
               </div>
 
               <div>
-                <div className="label mb-1">Keyword utama</div>
-                <p className="text-slate-200">{stageData.seo.primaryKeyword}</p>
+                <span className="label text-[10px] text-white/40">Primary Keyword</span>
+                <p className="text-[#828fff] font-mono mt-0.5">
+                  {stageData.seo.primaryKeyword}
+                </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2 pt-1 border-t border-white/[0.04]">
                 <div>
-                  <div className="label mb-2">Keyword</div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span className="label text-[10px] text-white/40">Target Keywords</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {stageData.seo.keywords.map((k) => (
-                      <span key={k} className="text-[11px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded">
+                      <span
+                        key={k}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-white/60"
+                      >
                         {k}
                       </span>
                     ))}
                   </div>
                 </div>
+
                 <div>
-                  <div className="label mb-2">Long tail</div>
-                  <div className="flex flex-wrap gap-1.5">
+                  <span className="label text-[10px] text-white/40">Long-Tail Queries</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {stageData.seo.longTailKeywords.map((k) => (
-                      <span key={k} className="text-[11px] bg-slate-800 border border-slate-700 px-2 py-0.5 rounded">
+                      <span
+                        key={k}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.06] text-white/60"
+                      >
                         {k}
                       </span>
                     ))}
@@ -265,8 +316,8 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
               </div>
 
               <div>
-                <div className="label mb-2">Bullet point listing</div>
-                <ul className="list-disc list-inside space-y-1 text-slate-300">
+                <span className="label text-[10px] text-white/40">Listing Highlights / Bullets</span>
+                <ul className="list-disc list-inside space-y-1 text-white/70 mt-1">
                   {stageData.seo.bulletPoints.map((b) => (
                     <li key={b}>{b}</li>
                   ))}
@@ -274,7 +325,7 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
               </div>
 
               {wpFor('SEO') && (
-                <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
                   <CopyButton text={wpFor('SEO')!.content} />
                   <ApprovalRow wp={wpFor('SEO')!} onChanged={onChanged} />
                 </div>
@@ -282,37 +333,39 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
             </div>
           )}
 
+          {/* VISUAL TAB */}
           {activeTab === 'VISUAL' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {stageData.visuals.map((visual) => {
                 const wp = wpFor('IMAGE_PROMPT', visual.platform);
                 return (
-                  <div key={visual.platform} className="rounded-lg border border-slate-800 bg-slate-950/40 p-4 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-medium text-sm">
-                        {PLATFORM_LABELS[visual.platform] ?? visual.platform}
+                  <div
+                    key={visual.platform}
+                    className="p-3.5 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-3 text-xs"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                      <span className="font-semibold text-white">
+                        {PLATFORM_LABELS[visual.platform] ?? visual.platform} Visual Prompt
                       </span>
                       <div className="flex items-center gap-2">
                         <CopyButton text={visual.imagePrompt} />
                         {wp && <ApprovalRow wp={wp} onChanged={onChanged} />}
                       </div>
                     </div>
+
                     <div>
-                      <div className="label mb-1">Image prompt</div>
-                      <p className="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
+                      <span className="label text-[10px] text-white/40">AI Image Prompt</span>
+                      <p className="text-white/80 font-mono text-[11px] mt-1 bg-black/30 p-2.5 rounded border border-white/[0.04] whitespace-pre-wrap">
                         {visual.imagePrompt}
                       </p>
                     </div>
+
                     {visual.videoScript && (
                       <div>
-                        <div className="label mb-1">Video script</div>
-                        <p className="text-sm text-slate-300 whitespace-pre-wrap">{visual.videoScript}</p>
-                      </div>
-                    )}
-                    {visual.styleNotes && (
-                      <div>
-                        <div className="label mb-1">Style notes</div>
-                        <p className="text-sm text-slate-400">{visual.styleNotes}</p>
+                        <span className="label text-[10px] text-white/40">Reels / Shorts Script</span>
+                        <p className="text-white/70 whitespace-pre-wrap mt-1 leading-relaxed">
+                          {visual.videoScript}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -321,36 +374,42 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
             </div>
           )}
 
+          {/* SCHEDULE TAB */}
           {activeTab === 'SCHEDULE' && (
             <div className="space-y-3">
-              <div className="overflow-x-auto rounded-lg border border-slate-800">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-800/60 text-slate-400 text-xs">
+              <div className="border border-white/[0.06] rounded-md overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-white/[0.03] text-white/40 border-b border-white/[0.06] font-mono text-[11px]">
                     <tr>
-                      <th className="text-left px-3 py-2 font-medium">Tanggal</th>
-                      <th className="text-left px-3 py-2 font-medium">Hari</th>
-                      <th className="text-left px-3 py-2 font-medium">Jam</th>
-                      <th className="text-left px-3 py-2 font-medium">Platform</th>
-                      <th className="text-left px-3 py-2 font-medium">Aset</th>
-                      <th className="text-left px-3 py-2 font-medium">Catatan</th>
+                      <th className="p-2.5 font-medium">Hari / Jam</th>
+                      <th className="p-2.5 font-medium">Platform</th>
+                      <th className="p-2.5 font-medium">Referensi Aset</th>
+                      <th className="p-2.5 font-medium">Catatan Distribusi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {stageData.schedule.map((item, index) => (
-                      <tr key={`${item.date}-${index}`}>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-400">{item.date || '—'}</td>
-                        <td className="px-3 py-2">{item.day}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{item.time}</td>
-                        <td className="px-3 py-2">{PLATFORM_LABELS[item.platform] ?? item.platform}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-400">{item.contentRef}</td>
-                        <td className="px-3 py-2 text-xs text-slate-400">{item.note ?? ''}</td>
+                  <tbody className="divide-y divide-white/[0.04] text-white/70 font-mono">
+                    {stageData.schedule.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-white/[0.01]">
+                        <td className="p-2.5">
+                          {item.day} {item.time}
+                        </td>
+                        <td className="p-2.5 text-white/90 font-sans">
+                          {PLATFORM_LABELS[item.platform] ?? item.platform}
+                        </td>
+                        <td className="p-2.5 text-[#828fff]">
+                          {item.contentRef}
+                        </td>
+                        <td className="p-2.5 text-white/50 font-sans">
+                          {item.note || '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
               {wpFor('SCHEDULE') && (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
                   <CopyButton text={wpFor('SCHEDULE')!.content} />
                   <ApprovalRow wp={wpFor('SCHEDULE')!} onChanged={onChanged} />
                 </div>
@@ -358,34 +417,36 @@ export function RunOutput({ run, onChanged }: { run: ContentRunDTO; onChanged: (
             </div>
           )}
 
+          {/* RESEARCH TAB */}
           {activeTab === 'RESEARCH' && stageData.research && (
-            <div className="grid gap-4 md:grid-cols-2 text-sm">
+            <div className="grid gap-3 md:grid-cols-2 text-xs">
               {(
                 [
-                  ['Target audiens', stageData.research.targetAudience],
-                  ['Pain point', stageData.research.painPoints],
-                  ['Unique selling points', stageData.research.uniqueSellingPoints],
-                  ['Angle konten', stageData.research.angles],
-                  ['Keyword pasar', stageData.research.competitorKeywords],
+                  ['Target Audience', stageData.research.targetAudience],
+                  ['Customer Pain Points', stageData.research.painPoints],
+                  ['Unique Selling Proposition (USP)', stageData.research.uniqueSellingPoints],
+                  ['Content Angles', stageData.research.angles],
                 ] as Array<[string, string[]]>
               ).map(([label, items]) => (
-                <div key={label}>
-                  <div className="label mb-2">{label}</div>
-                  <ul className="list-disc list-inside space-y-1 text-slate-300">
-                    {(items ?? []).map((item) => (
-                      <li key={item}>{item}</li>
+                <div
+                  key={label}
+                  className="p-3 rounded-md border border-white/[0.06] bg-white/[0.01] space-y-1.5"
+                >
+                  <span className="label text-[10px] text-white/40">{label}</span>
+                  <ul className="list-disc list-inside space-y-0.5 text-white/70">
+                    {(items ?? []).map((it) => (
+                      <li key={it}>{it}</li>
                     ))}
                   </ul>
                 </div>
               ))}
-              <div className="md:col-span-2">
-                <div className="label mb-1">Saran tone</div>
-                <p className="text-slate-300">{stageData.research.toneAdvice}</p>
-              </div>
-              {wpFor('RESEARCH') && (
-                <div className="md:col-span-2 flex items-center justify-between gap-3 border-t border-slate-800 pt-3">
-                  <CopyButton text={wpFor('RESEARCH')!.content} />
-                  <ApprovalRow wp={wpFor('RESEARCH')!} onChanged={onChanged} />
+
+              {stageData.research.toneAdvice && (
+                <div className="md:col-span-2 p-3 rounded-md border border-white/[0.06] bg-white/[0.01]">
+                  <span className="label text-[10px] text-white/40">Saran Tone & Gaya Bahasa</span>
+                  <p className="text-white/80 mt-1 leading-relaxed">
+                    {stageData.research.toneAdvice}
+                  </p>
                 </div>
               )}
             </div>

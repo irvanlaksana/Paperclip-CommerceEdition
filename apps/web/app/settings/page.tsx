@@ -3,6 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AI_PROVIDER_TYPES, type AIProviderDTO, type AIProviderType } from '@paperclip/shared';
 import { api, type AiStatus, type CatalogEntry } from '../../lib/api';
+import {
+  Settings,
+  Cpu,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  AlertTriangle,
+  Play,
+  RotateCw,
+  Edit2,
+  Server,
+  Layers,
+  Save,
+  X,
+} from 'lucide-react';
 
 interface FormState {
   id?: string;
@@ -36,14 +51,6 @@ function emptyForm(type: AIProviderType = 'GEMINI', catalog?: CatalogEntry[]): F
   };
 }
 
-/**
- * Settings - AI provider control panel.
- *
- * The whole point of this screen is that moving to another AI vendor never
- * requires a code change: pick a type, paste a key, mark it default, test it.
- * Providers configured through `.env` show up here too (source = ENV) so you
- * can see the effective configuration in one place.
- */
 export default function SettingsPage() {
   const [providers, setProviders] = useState<AIProviderDTO[]>([]);
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
@@ -105,7 +112,6 @@ export default function SettingsPage() {
         name: form.name,
         model: form.model,
         endpoint: form.endpoint,
-        // An empty key on an existing record means "keep what is stored".
         apiKey: form.apiKey.trim() ? form.apiKey.trim() : form.id ? undefined : null,
         temperature: form.temperature === '' ? null : Number(form.temperature),
         maxTokens: form.maxTokens === '' ? null : Number(form.maxTokens),
@@ -133,27 +139,27 @@ export default function SettingsPage() {
     try {
       const result = await api.ai.test(provider.id);
       if (result.ok) {
-        flash(`${provider.type} terhubung (${result.latencyMs} ms) — model ${result.model}`);
+        flash(`${provider.type} berhasil terkoneksi (${result.latencyMs} ms) — Model ${result.model}`);
       } else {
-        setError(`${provider.type} gagal dites: ${result.error ?? 'unknown error'}`);
+        setError(`${provider.type} gagal: ${result.error ?? 'Unknown error'}`);
       }
       await refresh();
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal menjalankan tes.');
+      setError(err?.message ?? 'Gagal melakukan tes koneksi.');
     } finally {
       setTestingId(null);
     }
   };
 
   const removeProvider = async (provider: AIProviderDTO) => {
-    if (!confirm(`Hapus konfigurasi ${provider.name}? Nilai dari .env tetap dipakai jika ada.`)) return;
+    if (!confirm(`Hapus konfigurasi provider ${provider.name}?`)) return;
     setBusy(true);
     try {
       await api.ai.remove(provider.id);
       await refresh();
-      flash(`${provider.name} dihapus.`);
+      flash(`${provider.name} berhasil dihapus.`);
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal menghapus.');
+      setError(err?.message ?? 'Gagal menghapus provider.');
     } finally {
       setBusy(false);
     }
@@ -162,434 +168,404 @@ export default function SettingsPage() {
   const saveInfra = async () => {
     try {
       await api.config.saveInfrastructure(infra);
-      flash('Pengaturan infrastruktur disimpan.');
+      flash('Konfigurasi infrastruktur tersimpan.');
     } catch (err: any) {
-      setError(err?.message ?? 'Gagal menyimpan infrastruktur.');
+      setError(err?.message ?? 'Gagal menyimpan konfigurasi.');
     }
   };
 
-  const sourceBadge = (source: string) => {
-    const styles: Record<string, string> = {
-      STORE: 'bg-blue-900/60 text-blue-300',
-      ENV: 'bg-violet-900/60 text-violet-300',
-      CATALOG: 'bg-slate-800 text-slate-400',
-      MOCK_FALLBACK: 'bg-amber-900/60 text-amber-300',
-      INLINE: 'bg-slate-800 text-slate-300',
-    };
-    return <span className={`pill ${styles[source] ?? styles.CATALOG}`}>{source}</span>;
-  };
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">System Settings</h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Ganti provider AI, kunci default, dan atur infrastruktur tanpa mengubah kode.
-        </p>
-      </header>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
+            System Settings
+          </h1>
+          <p className="text-xs text-white/50 mt-0.5">
+            Manajemen model LLM, konfigurasi kunci API provider AI, dan parameter arsitektur runtime.
+          </p>
+        </div>
+      </div>
 
       {error && (
-        <div className="rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-200">
+          {error}
+        </div>
       )}
       {notice && (
-        <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-200">
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-200">
           {notice}
         </div>
       )}
 
-      {/* ---------------------------- runtime status --------------------------- */}
+      {/* Runtime Status Overview */}
       {status && (
-        <section className="card space-y-3">
-          <h2 className="font-semibold">Status runtime</h2>
-          <div className="grid gap-3 md:grid-cols-3 text-sm">
-            <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
-              <div className="label">Provider default</div>
-              <div className="font-mono mt-1">{status.default.type}</div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {status.default.model} · {sourceBadge(status.default.source)}
+        <div className="card space-y-3">
+          <div className="pb-2 border-b border-white/[0.06] flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/90 flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-[#828fff]" />
+              Status Runtime AI
+            </span>
+            <span className="text-[10px] font-mono text-white/40">Paperclip Engine</span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 text-xs">
+            <div className="p-3 rounded border border-white/[0.06] bg-white/[0.01]">
+              <span className="label text-[10px] text-white/40">Default Provider</span>
+              <div className="font-mono text-white text-sm font-semibold mt-1">
+                {status.default.type}
+              </div>
+              <div className="text-[11px] font-mono text-white/40 mt-0.5">
+                {status.default.model} · {status.default.source}
               </div>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
-              <div className="label">Penyimpanan</div>
-              <div className="font-mono mt-1">{status.storage.driver}</div>
-              <div className="text-xs text-slate-500 mt-0.5 break-all">{status.storage.location}</div>
+
+            <div className="p-3 rounded border border-white/[0.06] bg-white/[0.01]">
+              <span className="label text-[10px] text-white/40">Storage Driver</span>
+              <div className="font-mono text-white text-sm font-semibold mt-1">
+                {status.storage.driver}
+              </div>
+              <div className="text-[11px] font-mono text-white/40 mt-0.5 truncate">
+                {status.storage.location}
+              </div>
             </div>
-            <div className="rounded-lg border border-slate-800 bg-slate-800/40 p-3">
-              <div className="label">Rantai fail-over</div>
-              <div className="text-xs mt-1 space-y-0.5">
-                {status.fallbackChain.slice(0, 4).map((item, index) => (
-                  <div key={`${item.type}-${index}`} className="font-mono">
-                    {index + 1}. {item.type}
-                    <span className="text-slate-500">/{item.model}</span>
-                    {!item.ready && <span className="text-amber-400"> (belum siap)</span>}
+
+            <div className="p-3 rounded border border-white/[0.06] bg-white/[0.01]">
+              <span className="label text-[10px] text-white/40">Fail-over Sequence</span>
+              <div className="text-[11px] font-mono text-white/60 mt-1 space-y-0.5">
+                {status.fallbackChain.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="truncate">
+                    {idx + 1}. {item.type} <span className="text-white/40">({item.model})</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+
           {status.default.type === 'MOCK' && (
-            <p className="text-xs text-amber-300/90 border border-amber-800/50 bg-amber-950/30 rounded-md px-3 py-2">
-              Sistem berjalan dengan driver MOCK: konten tetap dihasilkan lengkap tetapi isinya contoh offline. Isi API
-              key salah satu provider di bawah (atau set <code className="font-mono">AI_DEFAULT_PROVIDER</code> di .env)
-              untuk hasil nyata.
-            </p>
+            <div className="text-xs border border-amber-500/30 bg-amber-500/10 text-amber-200/90 rounded p-2.5">
+              Sistem saat ini berada di mode <span className="font-mono font-bold">MOCK</span>. Masukkan API key salah satu provider di bawah (misalnya Gemini, Anthropic, atau OpenAI) untuk menghubungkan agen AI secara langsung.
+            </div>
           )}
-        </section>
+        </div>
       )}
 
-      {/* ----------------------------- AI providers ---------------------------- */}
-      <section className="card space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      {/* AI Providers Section */}
+      <div className="card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-white/[0.06]">
           <div>
-            <h2 className="font-semibold">AI Providers</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Prioritas resolusi: <span className="text-slate-300">tersimpan di sini</span> →{' '}
-              <span className="text-slate-300">.env</span> → <span className="text-slate-300">default katalog</span>.
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-white/90">
+              AI Providers & Models
+            </h2>
+            <p className="text-[11px] text-white/40 mt-0.5">
+              Ganti model atau penyedia tanpa perlu mengubah baris kode apapun.
             </p>
           </div>
+
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary text-xs"
             onClick={() => {
               setError(null);
               setForm(emptyForm('GEMINI', catalog));
             }}
           >
-            + Tambah / ganti provider
+            <Plus className="w-3.5 h-3.5" />
+            <span>Tambah Provider</span>
           </button>
         </div>
 
+        {/* Modal / Inline Edit Form */}
         {form && (
-          <div className="rounded-lg border border-blue-800/50 bg-blue-950/20 p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm">{form.id ? 'Ubah provider' : 'Provider baru'}</h3>
-              <button type="button" className="text-xs text-slate-400 hover:text-slate-200" onClick={() => setForm(null)}>
-                tutup ✕
+          <div className="p-4 rounded-md border border-[#828fff]/40 bg-white/[0.02] space-y-3.5 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <span className="font-semibold text-white">
+                {form.id ? 'Edit Provider' : 'Konfigurasi Provider Baru'}
+              </span>
+              <button
+                type="button"
+                className="text-white/40 hover:text-white"
+                onClick={() => setForm(null)}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-3.5 md:grid-cols-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="p-type">
-                  Tipe provider
+                  Tipe Provider
                 </label>
                 <select
                   id="p-type"
-                  className="input"
+                  className="input text-xs"
                   value={form.type}
-                  onChange={(event) => {
-                    const type = event.target.value as AIProviderType;
+                  onChange={(e) => {
+                    const type = e.target.value as AIProviderType;
                     setForm({ ...emptyForm(type, catalog), id: form.id, isDefault: form.isDefault });
                   }}
                 >
-                  {AI_PROVIDER_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {catalogByType.get(type)?.label ?? type} — {type}
+                  {AI_PROVIDER_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {catalogByType.get(t)?.label ?? t} ({t})
                     </option>
                   ))}
                 </select>
-                {catalogByType.get(form.type)?.notes && (
-                  <p className="text-[11px] text-slate-400">{catalogByType.get(form.type)!.notes}</p>
-                )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="p-name">
-                  Nama tampilan
+                  Label Tampilan
                 </label>
                 <input
                   id="p-name"
-                  className="input"
+                  className="input text-xs"
                   value={form.name}
-                  onChange={(event) => setForm({ ...form, name: event.target.value })}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="p-model">
-                  Model
+                  Model String
                 </label>
                 <input
                   id="p-model"
-                  className="input font-mono"
+                  className="input font-mono text-xs"
                   list={`models-${form.type}`}
                   value={form.model}
-                  onChange={(event) => setForm({ ...form, model: event.target.value })}
+                  onChange={(e) => setForm({ ...form, model: e.target.value })}
                 />
                 <datalist id={`models-${form.type}`}>
-                  {(catalogByType.get(form.type)?.suggestedModels ?? []).map((model) => (
-                    <option key={model} value={model} />
+                  {(catalogByType.get(form.type)?.suggestedModels ?? []).map((m) => (
+                    <option key={m} value={m} />
                   ))}
                 </datalist>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="label" htmlFor="p-endpoint">
-                  Endpoint
+                  Endpoint URL
                 </label>
                 <input
                   id="p-endpoint"
                   className="input font-mono text-xs"
                   value={form.endpoint}
-                  onChange={(event) => setForm({ ...form, endpoint: event.target.value })}
+                  onChange={(e) => setForm({ ...form, endpoint: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-1.5 md:col-span-2">
                 <label className="label" htmlFor="p-key">
-                  API key {form.id && <span className="normal-case text-slate-500">(kosongkan untuk tidak mengubah)</span>}
+                  API Key {form.id && <span className="normal-case text-white/40">(kosongkan jika tidak diubah)</span>}
                 </label>
                 <input
                   id="p-key"
                   type="password"
                   autoComplete="off"
-                  className="input font-mono"
-                  placeholder={catalogByType.get(form.type)?.requiresApiKey ? 'tempel API key…' : 'opsional'}
+                  className="input font-mono text-xs"
+                  placeholder="sk-..."
                   value={form.apiKey}
-                  onChange={(event) => setForm({ ...form, apiKey: event.target.value })}
-                />
-                <p className="text-[11px] text-slate-500">
-                  Alternatif lewat .env:{' '}
-                  <code className="font-mono text-slate-400">
-                    {(catalogByType.get(form.type)?.envKeyNames ?? [`${form.type}_API_KEY`]).join(' / ')}
-                  </code>
-                  {catalogByType.get(form.type)?.keyConfigured && (
-                    <span className="text-emerald-400"> (terdeteksi terisi)</span>
-                  )}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="label" htmlFor="p-temp">
-                  Temperature
-                </label>
-                <input
-                  id="p-temp"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  className="input"
-                  placeholder="0.7"
-                  value={form.temperature}
-                  onChange={(event) => setForm({ ...form, temperature: event.target.value })}
+                  onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="label" htmlFor="p-max">
-                  Max tokens
-                </label>
-                <input
-                  id="p-max"
-                  type="number"
-                  step="128"
-                  min="1"
-                  className="input"
-                  placeholder="1024"
-                  value={form.maxTokens}
-                  onChange={(event) => setForm({ ...form, maxTokens: event.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="label" htmlFor="p-prio">
-                  Prioritas fail-over
-                </label>
-                <input
-                  id="p-prio"
-                  type="number"
-                  className="input"
-                  value={form.priority}
-                  onChange={(event) => setForm({ ...form, priority: event.target.value })}
-                />
-                <p className="text-[11px] text-slate-500">Angka lebih kecil dicoba lebih dulu.</p>
-              </div>
-
-              <div className="space-y-3 pt-5">
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+              <div className="flex items-center gap-4 pt-1 md:col-span-2">
+                <label className="flex items-center gap-2 text-xs text-white/80 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    className="accent-blue-600"
+                    className="rounded accent-[#5e6ad2]"
                     checked={form.enabled}
-                    onChange={(event) => setForm({ ...form, enabled: event.target.checked })}
+                    onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
                   />
-                  Aktif
+                  <span>Aktifkan Provider</span>
                 </label>
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-white/80 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    className="accent-blue-600"
+                    className="rounded accent-[#5e6ad2]"
                     checked={form.isDefault}
-                    onChange={(event) => setForm({ ...form, isDefault: event.target.checked })}
+                    onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
                   />
-                  Jadikan provider default
+                  <span>Jadikan Provider Default</span>
                 </label>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <button type="button" className="btn btn-ghost" onClick={() => setForm(null)}>
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/[0.06]">
+              <button
+                type="button"
+                className="btn btn-ghost text-xs"
+                onClick={() => setForm(null)}
+              >
                 Batal
               </button>
-              <button type="button" className="btn btn-primary" onClick={saveProvider} disabled={busy}>
-                {busy ? 'Menyimpan…' : 'Simpan provider'}
+              <button
+                type="button"
+                className="btn btn-primary text-xs"
+                onClick={saveProvider}
+                disabled={busy}
+              >
+                {busy ? 'Menyimpan…' : 'Simpan Provider'}
               </button>
             </div>
           </div>
         )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-slate-400 border-b border-slate-800 text-xs">
-                <th className="pb-3 font-medium">Provider</th>
-                <th className="pb-3 font-medium">Model</th>
-                <th className="pb-3 font-medium">Sumber</th>
-                <th className="pb-3 font-medium">Key</th>
-                <th className="pb-3 font-medium">Status</th>
-                <th className="pb-3 font-medium">Tes terakhir</th>
-                <th className="pb-3 font-medium text-right">Aksi</th>
+        {/* Providers Table */}
+        <div className="border border-white/[0.06] rounded-md overflow-hidden">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-white/[0.03] text-white/40 border-b border-white/[0.06] font-mono text-[11px]">
+              <tr>
+                <th className="p-2.5 font-medium">Provider & Model</th>
+                <th className="p-2.5 font-medium">Sumber</th>
+                <th className="p-2.5 font-medium">API Key</th>
+                <th className="p-2.5 font-medium">Status</th>
+                <th className="p-2.5 font-medium text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
-              {providers.map((provider) => (
-                <tr key={provider.id} className={provider.enabled ? '' : 'opacity-55'}>
-                  <td className="py-3 pr-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{provider.name}</span>
-                      {provider.isDefault && (
-                        <span className="pill bg-emerald-900/60 text-emerald-300" title="Provider default">
-                          default
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-mono">{provider.type}</div>
-                  </td>
-                  <td className="py-3 pr-3 font-mono text-xs text-slate-300">{provider.model}</td>
-                  <td className="py-3 pr-3">{sourceBadge(provider.source)}</td>
-                  <td className="py-3 pr-3 text-xs font-mono text-slate-400">
-                    {provider.apiKeySet ? provider.apiKeyPreview : provider.requiresApiKey === false ? 'tidak perlu' : '—'}
-                  </td>
-                  <td className="py-3 pr-3">
-                    <div className="flex flex-col gap-1">
+            <tbody className="divide-y divide-white/[0.04]">
+              {providers.map((p) => {
+                const isReady = p.enabled && p.ready;
+                return (
+                  <tr key={p.id} className="hover:bg-white/[0.01]">
+                    <td className="p-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white/90">{p.name}</span>
+                        {p.isDefault && (
+                          <span className="pill text-[9px] font-mono border border-[#828fff]/40 bg-[#5e6ad2]/20 text-[#828fff]">
+                            DEFAULT
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] font-mono text-white/40 mt-0.5">
+                        {p.type} · {p.model}
+                      </div>
+                    </td>
+
+                    <td className="p-2.5 font-mono text-[11px] text-white/50">
+                      {p.source}
+                    </td>
+
+                    <td className="p-2.5 font-mono text-[11px] text-white/50">
+                      {p.apiKeySet ? p.apiKeyPreview : p.requiresApiKey === false ? 'None required' : 'Belum diisi'}
+                    </td>
+
+                    <td className="p-2.5">
                       <span
-                        className={`pill ${
-                          provider.enabled && provider.ready
-                            ? 'bg-emerald-900/60 text-emerald-300'
-                            : provider.enabled
-                              ? 'bg-amber-900/60 text-amber-300'
-                              : 'bg-slate-800 text-slate-400'
+                        className={`pill text-[10px] font-mono border ${
+                          isReady
+                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                            : p.enabled
+                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                              : 'border-white/10 bg-white/5 text-white/40'
                         }`}
                       >
-                        {!provider.enabled ? 'nonaktif' : provider.ready ? 'siap' : 'belum siap'}
+                        {isReady ? 'READY' : p.enabled ? 'MISSING KEY' : 'DISABLED'}
                       </span>
-                      {!provider.ready && provider.missing?.length && (
-                        <span className="text-[11px] text-amber-400/80">kurang: {provider.missing.join(', ')}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 pr-3 text-xs">
-                    {provider.lastTestAt ? (
-                      <span className={provider.lastTestStatus === 'PASS' ? 'text-emerald-300' : 'text-red-300'}>
-                        {provider.lastTestStatus} · {provider.lastTestLatencyMs ?? 0} ms
-                        <span className="block text-slate-500">
-                          {new Date(provider.lastTestAt).toLocaleString('id-ID')}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-slate-600">belum dites</span>
-                    )}
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        className="btn-sm btn-ghost"
-                        onClick={() => testProvider(provider)}
-                        disabled={testingId === provider.id}
-                      >
-                        {testingId === provider.id ? 'Menguji…' : 'Tes'}
-                      </button>
-                      {provider.source === 'STORE' && (
-                        <>
-                          <button
-                            type="button"
-                            className="text-xs text-blue-400 hover:underline"
-                            onClick={() =>
-                              setForm({
-                                id: provider.id,
-                                type: provider.type,
-                                name: provider.name,
-                                model: provider.model,
-                                endpoint: provider.endpoint,
-                                apiKey: '',
-                                temperature: provider.temperature != null ? String(provider.temperature) : '',
-                                maxTokens: provider.maxTokens != null ? String(provider.maxTokens) : '',
-                                priority: String(provider.priority ?? 100),
-                                enabled: provider.enabled,
-                                isDefault: Boolean(provider.isDefault),
-                              })
-                            }
-                          >
-                            Ubah
-                          </button>
-                          <button
-                            type="button"
-                            className="text-xs text-red-400 hover:underline"
-                            onClick={() => removeProvider(provider)}
-                            disabled={busy}
-                          >
-                            Hapus
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    <td className="p-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          className="btn-sm btn-ghost text-[11px]"
+                          onClick={() => testProvider(p)}
+                          disabled={testingId === p.id}
+                        >
+                          {testingId === p.id ? 'Menguji…' : 'Tes'}
+                        </button>
+                        {p.source === 'STORE' && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-sm btn-ghost text-[11px]"
+                              onClick={() =>
+                                setForm({
+                                  id: p.id,
+                                  type: p.type,
+                                  name: p.name,
+                                  model: p.model,
+                                  endpoint: p.endpoint,
+                                  apiKey: '',
+                                  temperature: p.temperature != null ? String(p.temperature) : '',
+                                  maxTokens: p.maxTokens != null ? String(p.maxTokens) : '',
+                                  priority: String(p.priority ?? 100),
+                                  enabled: p.enabled,
+                                  isDefault: Boolean(p.isDefault),
+                                })
+                              }
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-sm btn-ghost text-[11px] text-red-400 hover:text-red-300"
+                              onClick={() => removeProvider(p)}
+                              disabled={busy}
+                            >
+                              Hapus
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
-      {/* ----------------------------- infrastructure -------------------------- */}
-      <section className="card space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      {/* Infrastructure Card */}
+      <div className="card space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
           <div>
-            <h2 className="font-semibold">Infrastructure</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pilihan deployment. Backend penyimpanan aktual ditentukan oleh <code className="font-mono">DATA_DRIVER</code>.
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-white/90">
+              Infrastruktur & Penyimpanan
+            </h2>
+            <p className="text-[11px] text-white/40 mt-0.5">
+              Backend layer untuk penyimpanan state agen dan database e-commerce.
             </p>
           </div>
-          <button type="button" className="btn btn-ghost" onClick={saveInfra}>
-            Simpan
+
+          <button
+            type="button"
+            className="btn btn-ghost text-xs"
+            onClick={saveInfra}
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>Simpan</span>
           </button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {(['database', 'storage', 'runtime'] as const).map((key) => (
-            <div key={key} className="space-y-2">
+            <div key={key} className="space-y-1.5">
               <label className="label" htmlFor={`infra-${key}`}>
-                {key === 'database' ? 'Database' : key === 'storage' ? 'Storage' : 'Runtime'}
+                {key === 'database' ? 'Database Engine' : key === 'storage' ? 'File Storage' : 'Execution Runtime'}
               </label>
               <select
                 id={`infra-${key}`}
-                className="input"
+                className="input text-xs"
                 value={infra[key]}
-                onChange={(event) => setInfra({ ...infra, [key]: event.target.value })}
+                onChange={(e) => setInfra({ ...infra, [key]: e.target.value })}
               >
-                {(infraOptions[key] ?? []).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {(infraOptions[key] ?? []).map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
                   </option>
                 ))}
-                {!(infraOptions[key] ?? []).includes(infra[key]) && <option value={infra[key]}>{infra[key]}</option>}
+                {!(infraOptions[key] ?? []).includes(infra[key]) && (
+                  <option value={infra[key]}>{infra[key]}</option>
+                )}
               </select>
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
